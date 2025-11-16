@@ -1,8 +1,8 @@
 [
   {
-    "ContainingType": "AskSeniorApi.Controllers.TopicController",
-    "Method": "GetTopics",
-    "RelativePath": "api/Topic",
+    "ContainingType": "AskSeniorApi.Controllers.MemberController",
+    "Method": "GetAllGroupMember",
+    "RelativePath": "api/Member",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -10,24 +10,13 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "AskSeniorApi.Controllers.WeatherForecastController",
-    "Method": "Get",
-    "RelativePath": "WeatherForecast",
+    "ContainingType": "AskSeniorApi.Controllers.TopicController",
+    "Method": "GetAllTopics",
+    "RelativePath": "api/Topic",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[AskSeniorApi.WeatherForecast, AskSeniorApi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ],
-    "EndpointName": "GetWeatherForecast"
+    "ReturnTypes": []
   }
 ]

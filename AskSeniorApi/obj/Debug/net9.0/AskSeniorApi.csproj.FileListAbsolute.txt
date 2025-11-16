@@ -49,3 +49,4 @@ C:\Users\HP\Desktop\AskSeniorApi\AskSeniorApi\bin\Debug\net9.0\Supabase.Storage.
 C:\Users\HP\Desktop\AskSeniorApi\AskSeniorApi\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\HP\Desktop\AskSeniorApi\AskSeniorApi\bin\Debug\net9.0\System.Reactive.dll
 C:\Users\HP\Desktop\AskSeniorApi\AskSeniorApi\bin\Debug\net9.0\Websocket.Client.dll
+C:\Users\HP\Desktop\AskSeniorApi\AskSeniorApi\obj\Debug\net9.0\AskSeniorApi.sourcelink.json

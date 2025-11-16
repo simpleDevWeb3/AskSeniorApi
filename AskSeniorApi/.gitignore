@@ -1,0 +1,19 @@
+.vs/
+# Build results
+bin/
+obj/
+
+# VS folder
+.vs/
+
+# User-specific files
+*.user
+*.suo
+*.cache
+
+# Publish outputs
+*.publish/
+
+# NuGet
+packages/
+*.nupkg

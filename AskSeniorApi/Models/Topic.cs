@@ -7,13 +7,13 @@ namespace AskSeniorApi.Models;
 public class Topic : BaseModel
 {
     [PrimaryKey("id")]
-    public string id { get; set; }
+    public string? id { get; set; }
 
     [Column("created_at")]
     public DateTime created_at { get; set; }
 
     [Column("name")]
-    public string name { get; set; }
+    public string? name { get; set; }
 
     [Column("parent_id")]
     public string? parent_id { get; set; }
