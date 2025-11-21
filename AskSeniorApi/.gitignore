@@ -1,19 +1,27 @@
+# Visual Studio
 .vs/
-# Build results
-bin/
-obj/
-
-# VS folder
-.vs/
-
-# User-specific files
-*.user
 *.suo
-*.cache
-
-# Publish outputs
-*.publish/
-
-# NuGet
-packages/
-*.nupkg
+*.user
+*.bak
+*.obj
+*.pdb
+*.ilk
+*.aps
+*.log
+*.ncb
+*.bsc
+*.sbr
+*.tlb
+*.tlh
+*.tmp
+*.o
+*.lo
+*.la
+*.so
+*.a
+*.dll
+*.lib
+*.exe
+*.com
+*.ocx
+*.manifest
