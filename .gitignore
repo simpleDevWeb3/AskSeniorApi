@@ -1,1 +1,13 @@
+# .NET build folders
+bin/
+obj/
+
+# Rider / VSCode / Visual Studio
 .vs/
+.idea/
+
+# logs
+*.log
+
+# User secrets
+secrets.json
