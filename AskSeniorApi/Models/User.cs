@@ -22,7 +22,8 @@ public class User : BaseModel
     [Column("banner_url")]
     public string? banner_url { get; set; }
 
-
+    [Column("email")]
+    public string? email { get; set; }
 
     [Column("bio")]
     public string? bio { get; set; }

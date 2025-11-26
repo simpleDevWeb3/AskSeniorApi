@@ -1,12 +1,14 @@
 ﻿using AskSeniorApi.DTO;
 using AskSeniorApi.Helper;
 using AskSeniorApi.Models;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Supabase;
 using System.IdentityModel.Tokens.Jwt;
 using static AskSeniorApi.Models.Auth;
 using static Supabase.Postgrest.Constants;
-
+using Newtonsoft.Json; 
 namespace AskSeniorApi.Controllers
 {
     [Route("api/[controller]")]
@@ -48,6 +50,7 @@ namespace AskSeniorApi.Controllers
                         avatar_url = avatarUrl,
                         banner_url = bannerUrl,
                         bio = req.bio,
+                        email = res.User.Email,
                         created_at = DateTime.UtcNow
                     };
 
@@ -135,7 +138,33 @@ namespace AskSeniorApi.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                string errorMessage = ex.Message;
+
+               
+                if (errorMessage.Trim().StartsWith("{"))
+                {
+                    try
+                    {
+                      
+                        dynamic errorObj = JsonConvert.DeserializeObject(errorMessage);
+
+                        if (errorObj?.msg != null)
+                        {
+                            errorMessage = errorObj.msg;
+                        }
+                        else if (errorObj?.message != null)
+                        {
+                            errorMessage = errorObj.message;
+                        }
+                    }
+                    catch
+                    {
+                        return BadRequest(new { error = ex.Message });
+                    }
+                }
+
+                // 4. Return the clean string
+                return BadRequest(new { error = errorMessage });
             }
         }
 
@@ -159,6 +188,8 @@ namespace AskSeniorApi.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+
 
         // ---------------- CURRENT USER ----------------
         [HttpGet("current")]
@@ -198,6 +229,7 @@ namespace AskSeniorApi.Controllers
                     avatar_url = profile.avatar_url,
                     banner_url = profile.banner_url,
                     bio = profile.bio,
+                   
                     created_at = profile.created_at
                 };
 
@@ -210,6 +242,51 @@ namespace AskSeniorApi.Controllers
             catch (Exception ex)
             {
                 return Unauthorized(new { message = "Invalid or expired token", error = ex.Message });
+            }
+        }
+
+        [HttpGet("checkDuplicateEmail")]
+        public async Task<IActionResult> CheckDuplicateEmail(String email)
+        {
+            try
+            {
+                var existingEmail = await _supabase
+                             .From<User>()
+                             .Select("*")
+                             .Filter("email", Operator.Equals, email)
+                             .Get();
+
+                return Ok(new
+                {
+                    isDuplicate = existingEmail.Models.Count > 0
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+
+        [HttpGet("checkDuplicateUsername")]
+        public async Task<IActionResult> CheckDuplicateUsername(String username)
+        {
+            try
+            {
+                var existingUsername = await _supabase
+                             .From<User>()
+                             .Select("*")
+                             .Filter("name", Operator.Equals, username)
+                             .Get();
+
+                return Ok(new
+                {
+                    isDuplicate = existingUsername.Models.Count > 0
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
             }
         }
     }

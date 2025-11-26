@@ -8,5 +8,6 @@ public class UserDto
     public string? avatar_url { get; set; }
 
     public string? banner_url { get; set; }
+    public string? email { get; set; }
     public string? bio { get; set; }
 }
