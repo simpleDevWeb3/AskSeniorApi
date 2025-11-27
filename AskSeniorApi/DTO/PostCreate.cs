@@ -1,6 +1,6 @@
 ﻿namespace AskSeniorApi.DTO;
 
-public class PostDto
+public class PostCreate
 {
     public string? id { get; set; }
     public string user_id { get; set; }

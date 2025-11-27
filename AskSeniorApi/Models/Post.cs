@@ -6,6 +6,7 @@ namespace AskSeniorApi.Models;
 [Table("post")]
 public class Post: BaseModel
 {
+    [PrimaryKey("id", false)]
     [Column("id")]
     public string id { get; set; }
     [Column("op_id")]
