@@ -66,7 +66,7 @@ public class PostController : ControllerBase
         return Ok(dtoData.id);
     }
 
-    [HttpDelete("{post_id:string}")]
+    [HttpDelete("{post_id}")]
     public async Task<IActionResult> DeleteNewsletter(string post_id)
     {
         await _supabase
