@@ -18,10 +18,18 @@ public class PostController : ControllerBase
         _supabase = supabase;
     }
 
-    [HttpGet/*("{user_id:string}")*/]
-    public async Task<IActionResult> GetPost(/*string user_id*/)
+    [HttpGet/*("{user_id:}")*/]
+    public async Task<IActionResult> GetPost(string? user_id=null)
     {
-        var post = await _supabase.From<Post>().Select("*").Get();
+        var query = _supabase.From<Post>().Select("*");
+
+        if (!string.IsNullOrEmpty(user_id))
+        {
+            query = query.Where(x => x.user_id == user_id);
+        }
+
+        var post = await query.Get();
+
         /*
         var user = await _supabase.From<User>().Where(u => u.id == user_id).Get();
 
@@ -30,7 +38,7 @@ public class PostController : ControllerBase
             .Where(t => t.id == user.)
             .Get();
        */
-        var dtoData = post.Models.Select(p => new PostDto
+        var dtoData = post.Models.Select(p => new PostCreate
         {
             id = p.id,
             user_id = p.user_id,
@@ -45,7 +53,7 @@ public class PostController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> PostPost([FromForm] PostDto newPost)
+    public async Task<IActionResult> CreatePost([FromForm] PostCreate newPost)
     {
         var post = await _supabase.From<Post>().Select("*").Get();
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
@@ -62,11 +70,43 @@ public class PostController : ControllerBase
         };
 
         var response = await _supabase.From<Post>().Insert(dtoData);
+        //get comment and vote also
+        return Ok(dtoData.id);
+    }
+    
+    [HttpPost("{post_id}")]
+    public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEdit editedPost)
+    {
+        
+        var posts = await _supabase
+            .From<Post>()
+            .Where(p => p.id == post_id)
+            .Get();
+
+        if (posts.Models.Count <= 0) return NotFound();
+        var post = posts.Models.FirstOrDefault();
+        
+        var dtoData = new Post
+        {
+            id = post.id,
+            user_id = post.user_id,
+            created_at = post.created_at,
+            topic_id = editedPost.topic_id,
+            community_id = editedPost.community_id,
+            title = editedPost.title,
+            text = editedPost.text
+        };
+
+        var response = await _supabase
+            .From<Post>()
+            .Where(p => p.id == post_id)
+            .Update(dtoData);
 
         return Ok(dtoData.id);
     }
+    
 
-    [HttpDelete("{post_id:string}")]
+    [HttpDelete("{post_id}")]
     public async Task<IActionResult> DeleteNewsletter(string post_id)
     {
         await _supabase
