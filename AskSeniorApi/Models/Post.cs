@@ -24,4 +24,7 @@ public class Post: BaseModel
 
     [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
     public User User { get; set; }
+
+    [Reference(typeof(Topic), ReferenceAttribute.JoinType.Left)]
+    public Topic Topic { get; set; }
 }

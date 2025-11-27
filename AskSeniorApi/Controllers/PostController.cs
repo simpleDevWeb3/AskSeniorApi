@@ -19,7 +19,7 @@ public class PostController : ControllerBase
     }
 
 
-    [HttpGet/*("{user_id:}")*/]
+    [HttpGet("getPost")]
     public async Task<IActionResult> GetPost(string? user_id=null)
     {
         var query = _supabase.From<Post>().Select("*");
@@ -30,24 +30,18 @@ public class PostController : ControllerBase
         }
 
         var post = await query.Get();
+        if (post.Models.Count <= 0) return NotFound();
 
-        /*
-        var user = await _supabase.From<User>().Where(u => u.id == user_id).Get();
-
-        var topic = await _supabase
-            .From<Topic>()
-            .Where(t => t.id == user.)
-            .Get();
-       */
         var dtoData = post.Models.Select(p => new PostResponeDto
         {
             id = p.id,
             user_id = p.user_id,
+            user_name = p.User.name,
             topic_id = p.topic_id,
+            topic_name = p.Topic.name,
             community_id = p.community_id,
             title = p.title,
             text = p.text,
-            user_name = p.User.name,
         });
 
         return Ok(dtoData);
@@ -92,7 +86,7 @@ public class PostController : ControllerBase
         }
     }
     
-    [HttpPost("{post_id}")]
+    [HttpPost("editPost/{post_id}")]
     public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEditDto editedPost)
     {
         
@@ -131,7 +125,7 @@ public class PostController : ControllerBase
     }
     
 
-    [HttpDelete("{post_id}")]
+    [HttpDelete("deletePost/{post_id}")]
     public async Task<IActionResult> DeleteNewsletter(string post_id)
     {
         try
