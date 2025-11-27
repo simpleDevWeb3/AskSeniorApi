@@ -23,6 +23,15 @@ public class PostController : ControllerBase
     {
         var query = _supabase.From<Post>().Select("*");
 
+      
+
+        if (string.IsNullOrWhiteSpace(user_id) ||
+            user_id == "undefined" ||
+            user_id == "null")
+        {
+            user_id = null; // Force it to real null
+        }
+
         if (!string.IsNullOrEmpty(user_id))
         {
             query = query.Where(x => x.user_id == user_id);
