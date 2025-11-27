@@ -18,7 +18,8 @@ public class PostController : ControllerBase
         _supabase = supabase;
     }
 
-    [HttpGet/*("{user_id:}")*/]
+
+    [HttpGet("getPost")]
     public async Task<IActionResult> GetPost(string? user_id=null)
     {
         var query = _supabase.From<Post>().Select("*");
@@ -38,31 +39,25 @@ public class PostController : ControllerBase
         }
 
         var post = await query.Get();
+        if (post.Models.Count <= 0) return NotFound();
 
-        /*
-        var user = await _supabase.From<User>().Where(u => u.id == user_id).Get();
-
-        var topic = await _supabase
-            .From<Topic>()
-            .Where(t => t.id == user.)
-            .Get();
-       */
-        var dtoData = post.Models.Select(p => new PostCreate
+        var dtoData = post.Models.Select(p => new PostResponeDto
         {
             id = p.id,
             user_id = p.user_id,
+            user_name = p.User.name,
             topic_id = p.topic_id,
+            topic_name = p.Topic.name,
             community_id = p.community_id,
-            created_at = p.created_at,
             title = p.title,
-            text = p.text
+            text = p.text,
         });
 
         return Ok(dtoData);
     }
 
     [HttpPost("createPost")]
-    public async Task<IActionResult> CreatePost([FromForm] PostCreate newPost)
+    public async Task<IActionResult> CreatePost([FromForm] PostCreateDto newPost)
     {
         var post = await _supabase.From<Post>().Select("*").Get();
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
@@ -76,24 +71,32 @@ public class PostController : ControllerBase
         {
             incomingId = null; // Force it to real null
         }
-        var dtoData = new Post
+
+        try
         {
-            id = "P" + unix,
-            user_id = newPost.user_id,
-            topic_id = newPost.topic_id,
-            community_id = incomingId,
-            created_at = DateTime.Now,
-            title = newPost.title,
-            text = newPost.text
-        };
-        System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData.community_id}");
-        var response = await _supabase.From<Post>().Insert(dtoData);
-        //get comment and vote also
-        return Ok(dtoData.id);
+            var dtoData = new Post
+            {
+                id = "P" + unix,
+                user_id = newPost.user_id,
+                topic_id = newPost.topic_id,
+                community_id = incomingId,
+                created_at = DateTime.Now,
+                title = newPost.title,
+                text = newPost.text
+            };
+            System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData.community_id}");
+            var response = await _supabase.From<Post>().Insert(dtoData);
+            //get comment and vote also
+            return Ok(dtoData.id);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
     
-    [HttpPost("{post_id}")]
-    public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEdit editedPost)
+    [HttpPost("editPost/{post_id}")]
+    public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEditDto editedPost)
     {
         
         var posts = await _supabase
@@ -103,35 +106,49 @@ public class PostController : ControllerBase
 
         if (posts.Models.Count <= 0) return NotFound();
         var post = posts.Models.FirstOrDefault();
-        
-        var dtoData = new Post
+
+        try
         {
-            id = post.id,
-            user_id = post.user_id,
-            created_at = post.created_at,
-            topic_id = editedPost.topic_id,
-            community_id = editedPost.community_id,
-            title = editedPost.title,
-            text = editedPost.text
-        };
+            var dtoData = new Post
+            {
+                id = post.id,
+                user_id = post.user_id,
+                created_at = post.created_at,
+                topic_id = editedPost.topic_id,
+                community_id = editedPost.community_id,
+                title = editedPost.title,
+                text = editedPost.text
+            };
 
-        var response = await _supabase
-            .From<Post>()
-            .Where(p => p.id == post_id)
-            .Update(dtoData);
+            var response = await _supabase
+                .From<Post>()
+                .Where(p => p.id == post_id)
+                .Update(dtoData);
 
-        return Ok(dtoData.id);
+            return Ok(dtoData.id);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
     
 
-    [HttpDelete("{post_id}")]
+    [HttpDelete("deletePost/{post_id}")]
     public async Task<IActionResult> DeleteNewsletter(string post_id)
     {
-        await _supabase
-            .From<Post>()
-            .Where(p => p.id == post_id)
-            .Delete();
+        try
+        {
+            await _supabase
+                .From<Post>()
+                .Where(p => p.id == post_id)
+                .Delete();
 
-        return NoContent();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new {error = ex.Message});
+        }
     }
 }

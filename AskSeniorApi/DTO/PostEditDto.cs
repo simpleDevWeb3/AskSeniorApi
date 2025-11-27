@@ -1,6 +1,6 @@
 ﻿namespace AskSeniorApi.DTO;
 
-public class PostEdit
+public class PostEditDto
 {
     public string topic_id { get; set; }
     public string community_id { get; set; }
