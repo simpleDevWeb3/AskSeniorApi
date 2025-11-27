@@ -65,4 +65,15 @@ public class PostController : ControllerBase
 
         return Ok(dtoData.id);
     }
+
+    [HttpDelete("{post_id:string}")]
+    public async Task<IActionResult> DeleteNewsletter(string post_id)
+    {
+        await _supabase
+            .From<Post>()
+            .Where(p => p.id == post_id)
+            .Delete();
+
+        return NoContent();
+    }
 }
