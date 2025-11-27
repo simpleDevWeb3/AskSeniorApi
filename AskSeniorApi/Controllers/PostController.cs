@@ -52,23 +52,32 @@ public class PostController : ControllerBase
         return Ok(dtoData);
     }
 
-    [HttpPost]
+    [HttpPost("createPost")]
     public async Task<IActionResult> CreatePost([FromForm] PostCreate newPost)
     {
         var post = await _supabase.From<Post>().Select("*").Get();
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
+                                                                // 1. Get the raw value
+        string? incomingId = newPost.community_id;
 
+        // 2. Check for "undefined", "null", or empty space
+        if (string.IsNullOrWhiteSpace(incomingId) ||
+            incomingId == "undefined" ||
+            incomingId == "null")
+        {
+            incomingId = null; // Force it to real null
+        }
         var dtoData = new Post
         {
             id = "P" + unix,
             user_id = newPost.user_id,
             topic_id = newPost.topic_id,
-            community_id = newPost.community_id,
+            community_id = incomingId,
             created_at = DateTime.Now,
             title = newPost.title,
             text = newPost.text
         };
-
+        System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData.community_id}");
         var response = await _supabase.From<Post>().Insert(dtoData);
         //get comment and vote also
         return Ok(dtoData.id);
