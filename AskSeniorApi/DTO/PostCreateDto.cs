@@ -10,5 +10,5 @@ public class PostCreateDto
     public string title{ get; set; }
     public string text { get; set; }
 
-    public IFormFile image { get; set; }
+    public IFormFile? image { get; set; }
 }

@@ -78,7 +78,6 @@ public class PostController : ControllerBase
 
         try
         {
-            string imageUrl = await UploadFile.UploadFileAsync(newPost.image, "PostImage", _supabase);
             var dtoData_post = new Post
             {
                 id = "P" + unix,
@@ -90,17 +89,23 @@ public class PostController : ControllerBase
                 text = newPost.text
             };
 
-            var dtoData_postImage = new PostImage
-            {
-                image_id = dtoData_post.id + "IMG" + 1,
-                post_id = dtoData_post.id,
-                image_url = imageUrl,
-            };
-            
-            System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData_post.community_id}");
             await _supabase.From<Post>().Insert(dtoData_post);
-            await _supabase.From<PostImage>().Insert(dtoData_postImage);
+            
+            if (newPost.image != null && newPost.image.Length > 0)
+            {
+                string imageUrl = await UploadFile.UploadFileAsync(newPost.image, "PostImage", _supabase);
+                
+                var dtoData_postImage = new PostImage
+                {
+                    image_id = dtoData_post.id + "IMG" + 1, //static fisrt
+                    post_id = dtoData_post.id,
+                    image_url = imageUrl,
+                };
+                
+                await _supabase.From<PostImage>().Insert(dtoData_postImage);
+            }
 
+            System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData_post.community_id}");
             //get comment and vote also
             return Ok(dtoData_post.id);
         }
