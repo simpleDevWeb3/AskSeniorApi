@@ -90,9 +90,10 @@ public class PostController : ControllerBase
             };
 
             await _supabase.From<Post>().Insert(dtoData_post);
-            
+            /*
             if (newPost.image != null && newPost.image.Length > 0)
             {
+                
                 string imageUrl = await UploadFile.UploadFileAsync(newPost.image, "PostImage", _supabase);
                 
                 var dtoData_postImage = new PostImage
@@ -103,10 +104,34 @@ public class PostController : ControllerBase
                 };
                 
                 await _supabase.From<PostImage>().Insert(dtoData_postImage);
+                
             }
+            */
 
+            if (newPost.image != null && newPost.image.Length > 0)
+            {
+                //var bucket = _supabase.Storage.From("postImage");
+                //var image_url = new List<string>();
+                int i = 0;
+                foreach (var file in newPost.image)
+                {
+                    if (file.Length > 0)
+                    {
+                        string url = await UploadFile.UploadFileAsync(file, "PostImage", _supabase);
+                        //image_url.Add(url);
+
+                        var dtoData_postImage = new PostImage
+                        {
+                            image_id = dtoData_post.id + "IMG" + i, 
+                            post_id = dtoData_post.id,
+                            image_url = url,
+                        };
+                            
+                        await _supabase.From<PostImage>().Insert(dtoData_postImage);
+                    }
+                }
+            }
             System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData_post.community_id}");
-            //get comment and vote also
             return Ok(dtoData_post.id);
         }
         catch (Exception ex)
