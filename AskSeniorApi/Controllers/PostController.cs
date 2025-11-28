@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using AskSeniorApi.Models;
-using Supabase;
-//using Supabase.Postgrest;                     // namespace for Filter/Operator
-//using Supabase.Postgrest.Constants;
-using static AskSeniorApi.Models.Auth;
-using AskSeniorApi.DTO;
+﻿using AskSeniorApi.DTO;
+using AskSeniorApi.Helper;
 using AskSeniorApi.Helpers;
+using AskSeniorApi.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Supabase;
+using static AskSeniorApi.Models.Auth;
 
 namespace AskSeniorApi.Controllers;
 
@@ -24,21 +23,11 @@ public class PostController : ControllerBase
 
     [HttpGet("getPost")]
     public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null)
-            //[FromQuery] string? user_id = null,
-            //[FromQuery] string? post_title = null)
     {
         var query = _supabase.From<Post>().Select("*");
 
         user_id = user_id.Clean();
         post_title = post_title.Clean();
-        /*        
-        if (string.IsNullOrWhiteSpace(user_id) ||
-            user_id == "undefined" ||
-            user_id == "null")
-        {
-            user_id = null; // Force it to real null
-        }
-        */
 
         if (!string.IsNullOrEmpty(user_id))
         {
@@ -53,7 +42,7 @@ public class PostController : ControllerBase
         try
         {
             var post = await query.Get();
-            if (post.Models.Count <= 0) return NotFound();
+            if (post.Models.Count <= 0) return Ok("No record found");
 
             var dtoData = post.Models.Select(p => new PostResponeDto
             {
@@ -66,8 +55,11 @@ public class PostController : ControllerBase
                 community_id = p.community_id,
                 title = p.title,
                 text = p.text,
+                postImage_url = p.PostImage?
+                        .Select(img => img.image_url)   //access each image object
+                        .ToList() ?? new List<string>()
             });
-
+            
             return Ok(dtoData);
         }
         catch (Exception ex)
@@ -84,19 +76,10 @@ public class PostController : ControllerBase
                                                                 // 1. Get the raw value
         string? incomingId = newPost.community_id.Clean();
 
-        /*
-        // 2. Check for "undefined", "null", or empty space
-        if (string.IsNullOrWhiteSpace(incomingId) ||
-            incomingId == "undefined" ||
-            incomingId == "null")
-        {
-            incomingId = null; // Force it to real null
-        }
-        */
-
         try
         {
-            var dtoData = new Post
+            string imageUrl = await UploadFile.UploadFileAsync(newPost.image, "PostImage", _supabase);
+            var dtoData_post = new Post
             {
                 id = "P" + unix,
                 user_id = newPost.user_id,
@@ -106,10 +89,20 @@ public class PostController : ControllerBase
                 title = newPost.title,
                 text = newPost.text
             };
-            System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData.community_id}");
-            var response = await _supabase.From<Post>().Insert(dtoData);
+
+            var dtoData_postImage = new PostImage
+            {
+                image_id = dtoData_post.id + "IMG" + 1,
+                post_id = dtoData_post.id,
+                image_url = imageUrl,
+            };
+            
+            System.Diagnostics.Debug.WriteLine($"MY DEBUG LOG: {dtoData_post.community_id}");
+            await _supabase.From<Post>().Insert(dtoData_post);
+            await _supabase.From<PostImage>().Insert(dtoData_postImage);
+
             //get comment and vote also
-            return Ok(dtoData.id);
+            return Ok(dtoData_post.id);
         }
         catch (Exception ex)
         {
