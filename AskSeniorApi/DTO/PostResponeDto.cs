@@ -17,5 +17,6 @@
 
         public string title { get; set; }
         public string text { get; set; }
+        public List<string>? postImage_url{ get; set; }
     }
 }
