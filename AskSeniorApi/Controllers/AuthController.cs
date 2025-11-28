@@ -174,12 +174,27 @@ namespace AskSeniorApi.Controllers
         {
             try
             {
-                var session = _supabase.Auth.CurrentSession;
 
-                if (session == null)
-                    return BadRequest(new { message = "No active session. User is not logged in." });
+                var accessToken = Request.Headers["Authorization"]
+            .ToString()
+            .Replace("Bearer ", "");
 
-                await _supabase.Auth.SignOut();
+                // 2. If there is a token, try to tell Supabase to kill it.
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    try
+                    {
+          
+                        await _supabase.Auth.SignOut();
+                    }
+                    catch
+                    {
+                  
+                        // logout  succeed for the user regardless.
+                    }
+                }
+             
+
 
                 return Ok(new { message = "User successfully signed out." });
             }
