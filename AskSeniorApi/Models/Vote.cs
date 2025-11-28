@@ -3,11 +3,11 @@ using Supabase.Postgrest.Models;
 
 namespace AskSeniorApi.Models;
 
-[Table("votes")]
+[Table("vote")]
 public class Vote : BaseModel
 {
-    [PrimaryKey("id")]
-    public string Id { get; set; }
+    [PrimaryKey("vote_id")]
+    public string voteId { get; set; }
 
     [Column("post_id")]
     public string PostId { get; set; }
