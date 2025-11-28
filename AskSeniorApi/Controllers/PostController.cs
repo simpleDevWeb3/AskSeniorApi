@@ -132,10 +132,10 @@ public class PostController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
-    
+
 
     [HttpDelete("deletePost/{post_id}")]
-    public async Task<IActionResult> DeleteNewsletter(string post_id)
+    public async Task<IActionResult> DeletePost(string post_id)
     {
         try
         {
