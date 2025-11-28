@@ -27,4 +27,9 @@ public class Post: BaseModel
 
     [Reference(typeof(Topic), ReferenceAttribute.JoinType.Left)]
     public Topic Topic { get; set; }
+
+    /*
+    [Reference(typeof(Vote), ReferenceAttribute.JoinType.Left)]
+    public Vote Vote { get; set; }
+    */
 }

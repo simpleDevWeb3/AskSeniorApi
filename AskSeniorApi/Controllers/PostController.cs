@@ -23,9 +23,9 @@ public class PostController : ControllerBase
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(//string? user_id=null, string? post_title=null)
-            [FromQuery] string? user_id = null,
-            [FromQuery] string? post_title = null)
+    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null)
+            //[FromQuery] string? user_id = null,
+            //[FromQuery] string? post_title = null)
     {
         var query = _supabase.From<Post>().Select("*");
 
@@ -39,6 +39,7 @@ public class PostController : ControllerBase
             user_id = null; // Force it to real null
         }
         */
+
         if (!string.IsNullOrEmpty(user_id))
         {
             query = query.Where(x => x.user_id == user_id);
@@ -49,22 +50,30 @@ public class PostController : ControllerBase
             query = query.Filter(x => x.title, Supabase.Postgrest.Constants.Operator.ILike, $"%{post_title}%");
         }
 
-        var post = await query.Get();
-        if (post.Models.Count <= 0) return NotFound();
-
-        var dtoData = post.Models.Select(p => new PostResponeDto
+        try
         {
-            id = p.id,
-            user_id = p.user_id,
-            user_name = p.User.name,
-            topic_id = p.topic_id,
-            topic_name = p.Topic.name,
-            community_id = p.community_id,
-            title = p.title,
-            text = p.text,
-        });
+            var post = await query.Get();
+            if (post.Models.Count <= 0) return NotFound();
 
-        return Ok(dtoData);
+            var dtoData = post.Models.Select(p => new PostResponeDto
+            {
+                id = p.id,
+                user_id = p.user_id,
+                user_name = p.User.name,
+                avatar_url = p.User.avatar_url,
+                topic_id = p.topic_id,
+                topic_name = p.Topic.name,
+                community_id = p.community_id,
+                title = p.title,
+                text = p.text,
+            });
+
+            return Ok(dtoData);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPost("createPost")]
