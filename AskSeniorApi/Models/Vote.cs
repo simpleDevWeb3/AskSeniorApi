@@ -11,6 +11,9 @@ public class Vote : BaseModel
 
     [Column("post_id")]
     public string PostId { get; set; }
+   
+    [Column("comment_id")]
+    public string? CommentId { get; set; }
 
     [Column("user_id")]
     public string UserId { get; set; }

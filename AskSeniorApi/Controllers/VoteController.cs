@@ -2,11 +2,13 @@
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Supabase;
 using System.Security.Claims;
 using static AskSeniorApi.Models.Auth;
 
 namespace AskSeniorApi.Controllers;
+
 [Route("api/[controller]")]
 [ApiController]
 public class VoteController : ControllerBase
@@ -18,33 +20,41 @@ public class VoteController : ControllerBase
         _supabase = supabase;
     }
 
+    // Create or update vote
     [HttpPost("vote")]
-    public async Task<IActionResult> Vote([FromForm] VoteDto dto)
+    public async Task<IActionResult> Vote([FromBody] VoteDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.post_id))
-            return BadRequest(new { message = "post_id is required" });
+        if (dto == null)
+            return BadRequest(new { message = "Request body is required" });
 
-        // Get authenticated user ID
+        if (string.IsNullOrWhiteSpace(dto.post_id) && string.IsNullOrWhiteSpace(dto.comment_id))
+            return BadRequest(new { message = "Either post_id or comment_id is required" });
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? dto.user_id;
-
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized(new { message = "User not authenticated" });
 
-        // Check existing vote
-        var existing = await _supabase
-            .From<Vote>()
-            .Where(v => v.UserId == userId && v.PostId == dto.post_id)
-            .Get();
+        // Find existing vote
+        var query = _supabase.From<Vote>().Where(v => v.UserId == userId);
+
+        if (!string.IsNullOrWhiteSpace(dto.post_id))
+            query = query.Where(v => v.PostId == dto.post_id);
+
+        if (!string.IsNullOrWhiteSpace(dto.comment_id))
+            query = query.Where(v => v.CommentId == dto.comment_id);
+
+        var existing = await query.Get();
 
         var currentVote = existing.Models.FirstOrDefault();
 
-        // No existing vote → create
         if (currentVote == null)
         {
+            // Create new vote
             var newVote = new Vote
             {
                 voteId = Guid.NewGuid().ToString(),
                 PostId = dto.post_id,
+                CommentId = dto.comment_id,
                 UserId = userId,
                 IsUpvote = dto.is_upvote,
                 CreatedAt = DateTime.UtcNow
@@ -55,7 +65,7 @@ public class VoteController : ControllerBase
             return Ok(new { message = "Vote created", vote = ToDto(newVote) });
         }
 
-        // Same vote type → delete (toggle off)
+        // Same vote → remove (toggle off)
         if (currentVote.IsUpvote == dto.is_upvote)
         {
             await _supabase.From<Vote>()
@@ -65,7 +75,7 @@ public class VoteController : ControllerBase
             return Ok(new { message = "Vote removed" });
         }
 
-        // Different vote type → update
+        // Different vote → update
         currentVote.IsUpvote = dto.is_upvote;
         currentVote.CreatedAt = DateTime.UtcNow;
 
@@ -74,22 +84,25 @@ public class VoteController : ControllerBase
         return Ok(new { message = "Vote updated", vote = ToDto(currentVote) });
     }
 
-    [HttpDelete("delete/{postId}")]
-    public async Task<IActionResult> DeleteVote(string postId)
+    // Delete vote explicitly
+    [HttpDelete("delete")]
+    public async Task<IActionResult> DeleteVote([FromBody] VoteDto dto)
     {
-        // Use authenticated user
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (dto == null || (string.IsNullOrWhiteSpace(dto.post_id) && string.IsNullOrWhiteSpace(dto.comment_id)))
+            return BadRequest(new { message = "Either post_id or comment_id is required" });
 
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized(new { message = "User not authenticated" });
 
         var result = await _supabase
             .From<Vote>()
-            .Where(v => v.PostId == postId && v.UserId == userId)
+            .Where(v => v.UserId == userId &&
+                        ((dto.post_id != null && v.PostId == dto.post_id) ||
+                         (dto.comment_id != null && v.CommentId == dto.comment_id)))
             .Get();
 
         var vote = result.Models.FirstOrDefault();
-
         if (vote == null)
             return NotFound(new { message = "Vote not found" });
 
@@ -107,6 +120,7 @@ public class VoteController : ControllerBase
         {
             vote_id = v.voteId,
             post_id = v.PostId,
+            comment_id = v.CommentId,
             user_id = v.UserId,
             is_upvote = v.IsUpvote,
             created_at = v.CreatedAt
