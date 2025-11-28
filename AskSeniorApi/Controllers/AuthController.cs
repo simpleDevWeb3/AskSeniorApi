@@ -125,6 +125,7 @@ namespace AskSeniorApi.Controllers
                     avatar_url = profile.avatar_url,
                     banner_url = profile.banner_url,
                     bio = profile.bio,
+                    email = profile.email,
                     created_at = profile.created_at
                 };
 
@@ -133,6 +134,7 @@ namespace AskSeniorApi.Controllers
                     role = res.User.Role,
                     accessToken = res.AccessToken,
                     message = "Login successful.",
+
                     profile = profileDto
                 });
             }
@@ -244,7 +246,7 @@ namespace AskSeniorApi.Controllers
                     avatar_url = profile.avatar_url,
                     banner_url = profile.banner_url,
                     bio = profile.bio,
-                   
+                    email = profile.email,
                     created_at = profile.created_at
                 };
 
@@ -303,6 +305,14 @@ namespace AskSeniorApi.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
+        }
+
+
+        [HttpPost("editAccount/{post_id}")]
+        public async Task<IActionResult> EditAccount(string user_id, [FromForm] SignUpRequest req)
+        {
+            return Ok();
+           
         }
     }
 }
