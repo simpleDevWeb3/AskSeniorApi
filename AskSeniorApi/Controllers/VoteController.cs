@@ -11,6 +11,7 @@ namespace AskSeniorApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+
 public class VoteController : ControllerBase
 {
     private readonly Client _supabase;
@@ -49,10 +50,31 @@ public class VoteController : ControllerBase
 
         if (currentVote == null)
         {
+            // Generate next VoteID
+            var allVotesResult = await _supabase
+                .From<Vote>()
+                .Get(); // fetch all existing votes
+
+            var voteIds = allVotesResult.Models
+                .Select(v => v.VoteId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToList();
+
+            int maxNumber = 0;
+            foreach (var id in voteIds)
+            {
+                if (id.StartsWith("Vote") && int.TryParse(id.Substring(4), out int num))
+                {
+                    if (num > maxNumber)
+                        maxNumber = num;
+                }
+            }
+
+            var nextVoteId = $"V{(maxNumber + 1):D3}";
             // Create new vote
             var newVote = new Vote
             {
-                voteId = Guid.NewGuid().ToString(),
+                VoteId = nextVoteId,
                 PostId = dto.post_id,
                 CommentId = dto.comment_id,
                 UserId = userId,
@@ -69,7 +91,7 @@ public class VoteController : ControllerBase
         if (currentVote.IsUpvote == dto.is_upvote)
         {
             await _supabase.From<Vote>()
-                .Where(v => v.voteId == currentVote.voteId)
+                .Where(v => v.VoteId == currentVote.VoteId)
                 .Delete();
 
             return Ok(new { message = "Vote removed" });
@@ -107,7 +129,7 @@ public class VoteController : ControllerBase
             return NotFound(new { message = "Vote not found" });
 
         await _supabase.From<Vote>()
-            .Where(v => v.voteId == vote.voteId)
+            .Where(v => v.VoteId == vote.VoteId)
             .Delete();
 
         return Ok(new { message = "Vote deleted" });
@@ -118,7 +140,7 @@ public class VoteController : ControllerBase
     {
         return new VoteDto
         {
-            vote_id = v.voteId,
+            vote_id = v.VoteId,
             post_id = v.PostId,
             comment_id = v.CommentId,
             user_id = v.UserId,
@@ -126,5 +148,7 @@ public class VoteController : ControllerBase
             created_at = v.CreatedAt
         };
     }
+
+
 }
 

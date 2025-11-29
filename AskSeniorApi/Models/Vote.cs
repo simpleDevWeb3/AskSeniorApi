@@ -6,8 +6,9 @@ namespace AskSeniorApi.Models;
 [Table("vote")]
 public class Vote : BaseModel
 {
-    [PrimaryKey("vote_id")]
-    public string voteId { get; set; }
+    [PrimaryKey("vote_id", false)]
+    [Column ("vote_id")]
+    public string VoteId { get; set; }
 
     [Column("post_id")]
     public string PostId { get; set; }
