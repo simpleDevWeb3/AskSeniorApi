@@ -30,4 +30,7 @@ public class Post: BaseModel
 
     [Reference(typeof(PostImage), ReferenceAttribute.JoinType.Left)]
     public List<PostImage> PostImage { get; set; }
+
+    /*[Reference(typeof(Comment), ReferenceAttribute.JoinType.Left)]
+    public List<Comment> Comment { get; set; }*/
 }

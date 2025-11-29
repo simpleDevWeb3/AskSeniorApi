@@ -2,11 +2,11 @@
 using Supabase.Postgrest.Models;
 namespace AskSeniorApi.Models;
 
-[Table("comments")]
+[Table("comment")]
 
 public class Comment : BaseModel
 {
-    [PrimaryKey("id")]
+    [PrimaryKey("comment_id", false)]
     public string id { get; set; }
     [Column("post_id")]
     public string post_id { get; set; }

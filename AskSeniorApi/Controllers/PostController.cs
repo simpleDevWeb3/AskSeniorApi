@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Supabase;
 using System.ComponentModel;
 using static AskSeniorApi.Models.Auth;
+using static Supabase.Postgrest.Constants;
 
 namespace AskSeniorApi.Controllers;
 
@@ -54,7 +55,29 @@ public class PostController : ControllerBase
                 .Get();
 
             if (post.Models.Count <= 0) return Ok("No record found");
+            /*
+            int total_Comment = 0;
+            int total_UpVote = 0;
+            int total_DownVote = 0;
+            
+            foreach (var p in post.Models)
+            {
+                total_Comment = await _supabase
+                    .From<Comment>()
+                    .Where(c => c.post_id == p.id)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
 
+                total_UpVote = await _supabase
+                    .From<Vote>()
+                    .Where(v => v.PostId == p.id && v.IsUpvote == true)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+
+                total_DownVote = await _supabase
+                    .From<Vote>()
+                    .Where(v => v.PostId == p.id && v.IsUpvote == false)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+            }
+            */
             var dtoData = post.Models.Select(p => new PostResponeDto
             {
                 id = p.id,
@@ -68,10 +91,31 @@ public class PostController : ControllerBase
                 title = p.title,
                 text = p.text,
                 postImage_url = p.PostImage?
-                        .Select(img => img.image_url)   //access each image object
-                        .ToList() ?? new List<string>()
+                                .Select(img => img.image_url)   //access each image object
+                                .ToList() ?? new List<string>(),
+                //total_comment = total_Comment,
+                //total_upVote = total_UpVote,
+                //total_downVote = total_DownVote
             });
-            
+
+            foreach (var data in dtoData)
+            {
+                data.total_comment = await _supabase
+                    .From<Comment>()
+                    .Where(c => c.post_id == data.id)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+
+                data.total_upVote = await _supabase
+                    .From<Vote>()
+                    .Where(v => v.PostId == data.id && v.IsUpvote == true)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+
+                data.total_downVote = await _supabase
+                    .From<Vote>()
+                    .Where(v => v.PostId == data.id && v.IsUpvote == false)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+            }
+
             return Ok(dtoData);
         }
         catch (Exception ex)
@@ -102,35 +146,15 @@ public class PostController : ControllerBase
             };
 
             await _supabase.From<Post>().Insert(dtoData_post);
-            /*
-            if (newPost.image != null && newPost.image.Length > 0)
-            {
-                
-                string imageUrl = await UploadFile.UploadFileAsync(newPost.image, "PostImage", _supabase);
-                
-                var dtoData_postImage = new PostImage
-                {
-                    image_id = dtoData_post.id + "IMG" + 1, //static fisrt
-                    post_id = dtoData_post.id,
-                    image_url = imageUrl,
-                };
-                
-                await _supabase.From<PostImage>().Insert(dtoData_postImage);
-                
-            }
-            */
 
             if (newPost.image != null && newPost.image.Length > 0)
             {
-                //var bucket = _supabase.Storage.From("postImage");
-                //var image_url = new List<string>();
                 int i = 0;
                 foreach (var file in newPost.image)
                 {
                     if (file.Length > 0)
                     {
                         string url = await UploadFile.UploadFileAsync(file, "PostImage", _supabase);
-                        //image_url.Add(url);
 
                         var dtoData_postImage = new PostImage
                         {
