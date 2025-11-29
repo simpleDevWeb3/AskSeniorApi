@@ -15,6 +15,8 @@
         public string? community_name { get; set; }
         public string? community_avatar_url { get; set; }
 
+        public DateTime created_at { get; set; }
+
         public string title { get; set; }
         public string text { get; set; }
         public List<string>? postImage_url{ get; set; }

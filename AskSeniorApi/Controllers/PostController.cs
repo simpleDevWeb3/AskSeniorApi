@@ -4,7 +4,9 @@ using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Supabase;
+using System.ComponentModel;
 using static AskSeniorApi.Models.Auth;
 
 namespace AskSeniorApi.Controllers;
@@ -14,6 +16,7 @@ namespace AskSeniorApi.Controllers;
 public class PostController : ControllerBase
 {
     private readonly Client _supabase;
+    public int pageSize = 10;
 
     public PostController(Client supabase)
     {
@@ -22,7 +25,7 @@ public class PostController : ControllerBase
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null)
+    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, int page = 1)
     {
         var query = _supabase.From<Post>().Select("*");
 
@@ -41,7 +44,15 @@ public class PostController : ControllerBase
 
         try
         {
-            var post = await query.Get();
+            // Calculate row positions (Supabase Range is inclusive)
+            int from = (page - 1) * pageSize;      // 0 for page 1
+            int to = (page * pageSize) - 1;      // 9 for page 1
+
+            var post = await query
+                .Order("created_at", Supabase.Postgrest.Constants.Ordering.Descending)
+                .Range(from, to)
+                .Get();
+
             if (post.Models.Count <= 0) return Ok("No record found");
 
             var dtoData = post.Models.Select(p => new PostResponeDto
@@ -53,6 +64,7 @@ public class PostController : ControllerBase
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
+                created_at = p.created_at,
                 title = p.title,
                 text = p.text,
                 postImage_url = p.PostImage?
@@ -122,7 +134,7 @@ public class PostController : ControllerBase
 
                         var dtoData_postImage = new PostImage
                         {
-                            image_id = dtoData_post.id + "IMG" + i, 
+                            image_id = dtoData_post.id + "IMG" + i++, 
                             post_id = dtoData_post.id,
                             image_url = url,
                         };
