@@ -2,15 +2,9 @@
 using AskSeniorApi.Helper;
 using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Supabase;
-using System.ComponentModel;
-using static AskSeniorApi.Models.Auth;
 using static Supabase.Postgrest.Constants;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace AskSeniorApi.Controllers;
 
 [Route("api/[controller]")]
@@ -18,34 +12,43 @@ namespace AskSeniorApi.Controllers;
 public class PostController : ControllerBase
 {
     private readonly Client _supabase;
+    private readonly ICommentService _commentService;
     public int pageSize = 10;
 
-    public PostController(Client supabase)
+    public PostController(Client supabase, ICommentService commentService)
     {
         _supabase = supabase;
+        _commentService = commentService;
     }
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, int page = 1)
+    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, string? post_id = null, int page = 1)
     {
-        var query = _supabase.From<Post>().Select("*");
-
-        user_id = user_id.Clean();
-        post_title = post_title.Clean();
-
-        if (!string.IsNullOrEmpty(user_id))
-        {
-            query = query.Where(x => x.user_id == user_id);
-        }
-        
-        if (!string.IsNullOrEmpty(post_title))
-        {
-            query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
-        }
-
         try
         {
+            var query = _supabase.From<Post>().Select("*");
+
+            user_id = user_id.Clean();
+            post_id = post_id.Clean();
+            post_title = post_title.Clean();
+
+            if (!string.IsNullOrEmpty(user_id))
+            {
+                query = query.Where(x => x.user_id == user_id);
+            }
+        
+            if (!string.IsNullOrEmpty(post_title))
+            {
+                query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
+            }
+
+            if (!string.IsNullOrEmpty(post_id))
+            {
+                query = query.Where(x => x.id == post_id);
+                ///var comments = await _commentService.GetCommentsAsync(post_id);
+            }
+
             // Calculate row positions (Supabase Range is inclusive)
             int from = (page - 1) * pageSize;      // 0 for page 1
             int to = (page * pageSize) - 1;      // 9 for page 1
@@ -105,26 +108,9 @@ public class PostController : ControllerBase
 
             for (int i = 0; i < dtoData.Count; i++)
             {
-<<<<<<< HEAD
-                data.total_comment = await _supabase
-                    .From<Comment>()
-                    .Where(c => c.PostId == data.id)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
-
-                data.total_upVote = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.PostId == data.id && v.IsUpvote == true)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
-
-                data.total_downVote = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.PostId == data.id && v.IsUpvote == false)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
-=======
                 dtoData[i].total_comment = total_comment[i];  
                 dtoData[i].total_upVote = total_upVote[i];  
                 dtoData[i].total_downVote = total_downVote[i];   
->>>>>>> 75eca70fe8864cb5ec4c9cd5c9c115b6cf825f86
             }
 
 
