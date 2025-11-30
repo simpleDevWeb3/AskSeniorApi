@@ -18,7 +18,7 @@ namespace AskSeniorApi.Controllers;
 public class PostController : ControllerBase
 {
     private readonly Client _supabase;
-    public int pageSize = 10;
+  
 
     public PostController(Client supabase)
     {
@@ -27,7 +27,7 @@ public class PostController : ControllerBase
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, int page = 1)
+    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, int page = 1,int pageSize = 10)
     {
         var query = _supabase.From<Post>().Select("*");
 
@@ -55,7 +55,7 @@ public class PostController : ControllerBase
                 .Range(from, to)
                 .Get();
 
-            if (post.Models.Count <= 0) return Ok("No record found");
+            if (post.Models.Count <= 0) return Ok(new List<PostResponeDto>()); ;
 
             List<int> total_comment = [];
             List<int> total_upVote = [];

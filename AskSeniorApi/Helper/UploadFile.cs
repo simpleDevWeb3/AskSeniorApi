@@ -19,7 +19,15 @@ public static class UploadFile
         if (file.Length > maxSizeInBytes)
             throw new InvalidOperationException("File is too large.");
 
-        var imagePath = $"{Guid.NewGuid()}_{file.FileName}";
+       
+        var originalName = Path.GetFileName(file.FileName);
+
+
+        var sanitizedFileName = originalName.Replace(" ", "_");
+
+    
+        var imagePath = $"{Guid.NewGuid()}_{sanitizedFileName}";
+      
 
         byte[] bytes;
 
