@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using AskSeniorApi.DTO;
+using AskSeniorApi.Helper;
 using AskSeniorApi.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Supabase;
 using static AskSeniorApi.Models.Auth;
-using AskSeniorApi.DTO;
 
 namespace AskSeniorApi.Controllers;
 [Route("api/[controller]")]
@@ -11,36 +12,18 @@ namespace AskSeniorApi.Controllers;
 public class CommentController : ControllerBase
 {
     private readonly Client _supabase;
-    public CommentController(Client supabase)
+    private readonly ICommentService _commentService;
+
+    public CommentController(Client supabase, ICommentService commentService)
     {
         _supabase = supabase;
+        _commentService = commentService;
     }
+
     [HttpGet("post/{postId}")]
     public async Task<IActionResult> GetCommentsByPost(string postId)
     {
-        if (string.IsNullOrEmpty(postId))
-            return BadRequest(new { message = "postId required" });
-
-        var commentsResult = await _supabase
-            .From<Comment>()
-            .Select("*")
-            .Where(c => c.PostId == postId)
-            .Get();
-
-        // Order in C# using LINQ
-        var comments = commentsResult.Models
-            .OrderBy(c => c.CreatedAt)
-            .Select(c => new
-            {
-                c.CommentId,
-                c.Content,
-                c.CreatedAt,
-                userId = c.UserId,
-                parentId =c.ParentId
-            })
-            .ToList();
-
-        return Ok(comments);
+        return Ok(await _commentService.GetCommentsAsync(postId));
     }
 
     [HttpPost("create")]
@@ -135,6 +118,9 @@ public class CommentController : ControllerBase
 
         return Ok(new { message = "Comment deleted" });
     }
+
+
+
 }
 
 

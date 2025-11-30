@@ -2,15 +2,9 @@
 using AskSeniorApi.Helper;
 using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Supabase;
-using System.ComponentModel;
-using static AskSeniorApi.Models.Auth;
 using static Supabase.Postgrest.Constants;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace AskSeniorApi.Controllers;
 
 [Route("api/[controller]")]
@@ -18,34 +12,46 @@ namespace AskSeniorApi.Controllers;
 public class PostController : ControllerBase
 {
     private readonly Client _supabase;
-  
+    private readonly ICommentService _commentService;
+    public int pageSize = 10;
 
-    public PostController(Client supabase)
+    public PostController(Client supabase, ICommentService commentService)
     {
         _supabase = supabase;
+        _commentService = commentService;
     }
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, int page = 1,int pageSize = 10)
+    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, string?post_id=null, int page = 1,int pageSize = 10)
     {
-        var query = _supabase.From<Post>().Select("*");
-
-        user_id = user_id.Clean();
-        post_title = post_title.Clean();
-
-        if (!string.IsNullOrEmpty(user_id))
-        {
-            query = query.Where(x => x.user_id == user_id);
-        }
-        
-        if (!string.IsNullOrEmpty(post_title))
-        {
-            query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
-        }
-
         try
         {
+            var query = _supabase.From<Post>().Select("*");
+
+            user_id = user_id.Clean();
+            post_id = post_id.Clean();
+            post_id = post_id.ToUpper();    //ToUpper again after clean() ...
+            post_title = post_title.Clean();
+            List<CommentDto> comments = [];
+
+            if (!string.IsNullOrEmpty(user_id))
+            {
+                query = query.Where(x => x.user_id == user_id);
+            }
+        
+            if (!string.IsNullOrEmpty(post_title))
+            {
+                query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
+            }
+
+            if (!string.IsNullOrEmpty(post_id))
+            {
+                query = query.Where(x => x.id == post_id);
+                Console.WriteLine(post_id);
+                comments = await _commentService.GetCommentsAsync(post_id);
+            }
+
             // Calculate row positions (Supabase Range is inclusive)
             int from = (page - 1) * pageSize;      // 0 for page 1
             int to = (page * pageSize) - 1;      // 9 for page 1
@@ -101,6 +107,7 @@ public class PostController : ControllerBase
                 postImage_url = p.PostImage?
                                 .Select(img => img.image_url)   //access each image object
                                 .ToList() ?? new List<string>(),
+                Comment = comments
             }).ToList();
 
             for (int i = 0; i < dtoData.Count; i++)
@@ -110,13 +117,11 @@ public class PostController : ControllerBase
                 dtoData[i].total_downVote = total_downVote[i];   
             }
 
-
-
             return Ok(dtoData);
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message, inner = ex.InnerException?.Message });
+            return BadRequest(new { error = ex.Message });
         }
     }
 

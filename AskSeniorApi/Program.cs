@@ -1,3 +1,4 @@
+using AskSeniorApi.Helper;
 using Scalar.AspNetCore;
 using Supabase;
 
@@ -35,7 +36,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-
+builder.Services.AddScoped<ICommentService, CommentService>();
 
 var app = builder.Build();
 
