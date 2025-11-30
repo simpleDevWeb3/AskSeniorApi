@@ -13,7 +13,6 @@ public class PostController : ControllerBase
 {
     private readonly Client _supabase;
     private readonly ICommentService _commentService;
-    public int pageSize = 10;
 
     public PostController(Client supabase, ICommentService commentService)
     {
@@ -23,7 +22,7 @@ public class PostController : ControllerBase
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, string? post_id = null, int page = 1)
+    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, string?post_id=null, int page = 1,int pageSize = 10)
     {
         try
         {
@@ -61,37 +60,8 @@ public class PostController : ControllerBase
                  .Range(from, to)
                  .Get();
 
-            if (post.Models.Count <= 0) return Ok("No record found");
-            /*
-            List<int> total_comment = [];
-            List<int> total_upVote = [];
-            List<int> total_downVote = [];
-            int total = 0;
-            */
-            /*
-            foreach (var p in post.Models)
-            {
-                total = await _supabase
-                    .From<Comment>()
-                    .Where(c => c.PostId == p.id)
-                    .Count(CountType.Exact);
-                total_comment.Add(total);
-                
-                total = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.PostId == p.id && v.IsUpvote == true)
-                    .Where(v => v.CommentId == null)
-                    .Count(CountType.Exact);
-                total_upVote.Add(total);
-                
-                total = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.PostId == p.id && v.IsUpvote == false)
-                    .Where(v => v.CommentId == null)
-                    .Count(CountType.Exact);
-                total_downVote.Add(total);
-            }
-            */
+            if (post.Models.Count <= 0) return Ok(new List<PostResponeDto>()); ;
+
 
 
             var dtoData = post.Models.Select(p => new PostResponeDto
@@ -117,14 +87,7 @@ public class PostController : ControllerBase
 
                 Comment = comments
             }).ToList();
-            /*
-            for (int i = 0; i < dtoData.Count; i++)
-            {
-                dtoData[i].total_comment = total_comment[i];  
-                dtoData[i].total_upVote = total_upVote[i];  
-                dtoData[i].total_downVote = total_downVote[i];   
-            }
-            */
+
             return Ok(dtoData);
         }
         catch (Exception ex)
