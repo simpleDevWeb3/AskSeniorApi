@@ -7,6 +7,7 @@ namespace AskSeniorApi.Helper;
 public interface ICommentService
 {
     Task<List<CommentDto>> GetCommentsAsync(string postId);
+    Task<List<CommentDto>> GetCommentsAsync2(string postId);
 }
 
 public class CommentService : ICommentService
@@ -32,7 +33,6 @@ public class CommentService : ICommentService
             .Select(c => new CommentDto
             {
                 comment_id = c.CommentId,
-                post_id = c.PostId,
                 user_id = c.UserId,
                 content = c.Content,
                 created_at = c.CreatedAt,
@@ -42,5 +42,37 @@ public class CommentService : ICommentService
 
         return comments;
         
+    }
+
+    public async Task<List<CommentDto>> GetCommentsAsync2(string postId)
+    {
+
+        var comments = await _supabase
+            .From<Comment>()
+            .Select("*")
+            .Where(c => c.PostId == postId)
+            .Get();
+
+        var commentDto = comments.Models
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new CommentDto
+            {
+                comment_id = c.CommentId,
+                user_id = c.UserId,
+                content = c.Content,
+                created_at = c.CreatedAt,
+                parent_id = c.ParentId
+            })
+            .ToList();
+
+
+        var result = BuildSubHelper.BuildHierarchy<CommentDto>(
+            commentDto,
+            getParentId: c => c.parent_id,
+            getId: c => c.comment_id!,
+            setChildren: (parent, children) => parent.sub_comment = children
+        );
+
+        return result;
     }
 }

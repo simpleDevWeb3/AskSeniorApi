@@ -22,6 +22,10 @@ public class Post: BaseModel
     [Column("text")]
     public string text { get; set; }
 
+
+    public List<Comment>? comment { get; set; }
+    public List<Vote>? vote { get; set; }
+
     [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
     public User User { get; set; }
 
