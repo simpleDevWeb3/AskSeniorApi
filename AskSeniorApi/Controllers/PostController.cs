@@ -102,7 +102,7 @@ public class PostController : ControllerBase
             {
                 data.total_comment = await _supabase
                     .From<Comment>()
-                    .Where(c => c.post_id == data.id)
+                    .Where(c => c.PostId == data.id)
                     .Count(Supabase.Postgrest.Constants.CountType.Exact);
 
                 data.total_upVote = await _supabase
