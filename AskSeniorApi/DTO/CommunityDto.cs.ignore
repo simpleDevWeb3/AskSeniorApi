@@ -1,6 +1,0 @@
-﻿namespace AskSeniorApi.DTO
-{
-    public class CommunityDto
-    {
-    }
-}

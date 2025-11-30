@@ -9,6 +9,7 @@ using Supabase;
 using System.ComponentModel;
 using static AskSeniorApi.Models.Auth;
 using static Supabase.Postgrest.Constants;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AskSeniorApi.Controllers;
 
@@ -40,7 +41,7 @@ public class PostController : ControllerBase
         
         if (!string.IsNullOrEmpty(post_title))
         {
-            query = query.Filter(x => x.title, Supabase.Postgrest.Constants.Operator.ILike, $"%{post_title}%");
+            query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
         }
 
         try
@@ -50,34 +51,40 @@ public class PostController : ControllerBase
             int to = (page * pageSize) - 1;      // 9 for page 1
 
             var post = await query
-                .Order("created_at", Supabase.Postgrest.Constants.Ordering.Descending)
+                .Order("created_at", Ordering.Descending)
                 .Range(from, to)
                 .Get();
 
             if (post.Models.Count <= 0) return Ok("No record found");
-            /*
-            int total_Comment = 0;
-            int total_UpVote = 0;
-            int total_DownVote = 0;
-            
+
+            List<int> total_comment = [];
+            List<int> total_upVote = [];
+            List<int> total_downVote = [];
+            int total = 0;
+
             foreach (var p in post.Models)
             {
-                total_Comment = await _supabase
+                total = await _supabase
                     .From<Comment>()
-                    .Where(c => c.post_id == p.id)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+                    .Where(c => c.PostId == p.id)
+                    .Count(CountType.Exact);
+                total_comment.Add(total);
 
-                total_UpVote = await _supabase
+                total = await _supabase
                     .From<Vote>()
                     .Where(v => v.PostId == p.id && v.IsUpvote == true)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
-
-                total_DownVote = await _supabase
+                    .Where(v => v.CommentId == null)
+                    .Count(CountType.Exact);
+                total_upVote.Add(total);
+                
+                total = await _supabase
                     .From<Vote>()
                     .Where(v => v.PostId == p.id && v.IsUpvote == false)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+                    .Where(v => v.CommentId == null)
+                    .Count(CountType.Exact);
+                total_downVote.Add(total);
             }
-            */
+
             var dtoData = post.Models.Select(p => new PostResponeDto
             {
                 id = p.id,
@@ -87,19 +94,18 @@ public class PostController : ControllerBase
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
+                community_name = p.Community == null ? null : p.Community.Name,
                 created_at = p.created_at,
                 title = p.title,
                 text = p.text,
                 postImage_url = p.PostImage?
                                 .Select(img => img.image_url)   //access each image object
                                 .ToList() ?? new List<string>(),
-                //total_comment = total_Comment,
-                //total_upVote = total_UpVote,
-                //total_downVote = total_DownVote
-            });
+            }).ToList();
 
-            foreach (var data in dtoData)
+            for (int i = 0; i < dtoData.Count; i++)
             {
+<<<<<<< HEAD
                 data.total_comment = await _supabase
                     .From<Comment>()
                     .Where(c => c.PostId == data.id)
@@ -114,13 +120,20 @@ public class PostController : ControllerBase
                     .From<Vote>()
                     .Where(v => v.PostId == data.id && v.IsUpvote == false)
                     .Count(Supabase.Postgrest.Constants.CountType.Exact);
+=======
+                dtoData[i].total_comment = total_comment[i];  
+                dtoData[i].total_upVote = total_upVote[i];  
+                dtoData[i].total_downVote = total_downVote[i];   
+>>>>>>> 75eca70fe8864cb5ec4c9cd5c9c115b6cf825f86
             }
+
+
 
             return Ok(dtoData);
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { error = ex.Message, inner = ex.InnerException?.Message });
         }
     }
 
