@@ -49,14 +49,14 @@ public class CommentController : ControllerBase
         if (string.IsNullOrEmpty(dto.PostId) || string.IsNullOrWhiteSpace(dto.Content))
             return BadRequest(new { message = "postId and content are required" });
 
-        // 1️⃣ Count existing comments
+        // 1️ Count existing comments
         var allComments = await _supabase.From<Comment>().Select("comment_id").Get();
         int count = allComments.Models.Count;
 
-        // 2️⃣ Generate comment ID
+        // 2️ Generate comment ID
         string commentId = "C" + (count + 1).ToString("D4"); // e.g., "C0001", "C0002", ...
 
-        // 3️⃣ Create the comment
+        // 3️ Create the comment
         var newComment = new Comment
         {
             CommentId = commentId,

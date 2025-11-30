@@ -106,34 +106,32 @@ public class VoteController : ControllerBase
         return Ok(new { message = "Vote updated", vote = ToDto(currentVote) });
     }
 
-    // Delete vote explicitly
     [HttpDelete("delete")]
-    public async Task<IActionResult> DeleteVote([FromBody] VoteDto dto)
+    public async Task<IActionResult> DeleteVote([FromBody] DeleteVoteDto dto)
     {
-        if (dto == null || (string.IsNullOrWhiteSpace(dto.post_id) && string.IsNullOrWhiteSpace(dto.comment_id)))
-            return BadRequest(new { message = "Either post_id or comment_id is required" });
+        // Validate required fields
+        if (dto == null || string.IsNullOrWhiteSpace(dto.user_id) || string.IsNullOrWhiteSpace(dto.post_id))
+            return BadRequest(new { message = "user_id and post_id are required" });
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-            return Unauthorized(new { message = "User not authenticated" });
-
+        // Search for vote
         var result = await _supabase
             .From<Vote>()
-            .Where(v => v.UserId == userId &&
-                        ((dto.post_id != null && v.PostId == dto.post_id) ||
-                         (dto.comment_id != null && v.CommentId == dto.comment_id)))
+            .Where(v => v.UserId == dto.user_id && v.PostId == dto.post_id)
             .Get();
 
         var vote = result.Models.FirstOrDefault();
         if (vote == null)
             return NotFound(new { message = "Vote not found" });
 
-        await _supabase.From<Vote>()
+        // Perform deletion
+        await _supabase
+            .From<Vote>()
             .Where(v => v.VoteId == vote.VoteId)
             .Delete();
 
         return Ok(new { message = "Vote deleted" });
     }
+
 
     // Helper: Convert Vote → DTO
     private VoteDto ToDto(Vote v)
