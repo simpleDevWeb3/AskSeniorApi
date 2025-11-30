@@ -82,8 +82,8 @@ public class PostController : ControllerBase
                                 .ToList() ?? new List<string>(),
 
                 total_comment = p.comment?.Count ?? 0,
-                total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
-                total_downVote = p.vote?.Count(v => !v.IsUpvote) ?? 0,
+                total_upVote = p.vote?.Count(v => v.IsUpvote && v.CommentId == null) ?? 0,
+                total_downVote = p.vote?.Count(v => !v.IsUpvote && v.CommentId == null) ?? 0,
 
                 Comment = comments
             }).ToList();
