@@ -32,9 +32,10 @@ public class CommentService : ICommentService
             .Select(c => new CommentDto
             {
                 comment_id = c.CommentId,
+                post_id = c.PostId,
+                user_id = c.UserId,
                 content = c.Content,
                 created_at = c.CreatedAt,
-                user_id = c.UserId,
                 parent_id = c.ParentId
             })
             .ToList();

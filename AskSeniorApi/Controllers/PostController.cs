@@ -31,7 +31,9 @@ public class PostController : ControllerBase
 
             user_id = user_id.Clean();
             post_id = post_id.Clean();
+            post_id = post_id.ToUpper();    //ToUpper again after clean() ...
             post_title = post_title.Clean();
+            List<CommentDto> comments = [];
 
             if (!string.IsNullOrEmpty(user_id))
             {
@@ -46,7 +48,8 @@ public class PostController : ControllerBase
             if (!string.IsNullOrEmpty(post_id))
             {
                 query = query.Where(x => x.id == post_id);
-                ///var comments = await _commentService.GetCommentsAsync(post_id);
+                Console.WriteLine(post_id);
+                comments = await _commentService.GetCommentsAsync(post_id);
             }
 
             // Calculate row positions (Supabase Range is inclusive)
@@ -104,6 +107,7 @@ public class PostController : ControllerBase
                 postImage_url = p.PostImage?
                                 .Select(img => img.image_url)   //access each image object
                                 .ToList() ?? new List<string>(),
+                Comment = comments
             }).ToList();
 
             for (int i = 0; i < dtoData.Count; i++)
@@ -113,13 +117,11 @@ public class PostController : ControllerBase
                 dtoData[i].total_downVote = total_downVote[i];   
             }
 
-
-
             return Ok(dtoData);
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message, inner = ex.InnerException?.Message });
+            return BadRequest(new { error = ex.Message });
         }
     }
 
