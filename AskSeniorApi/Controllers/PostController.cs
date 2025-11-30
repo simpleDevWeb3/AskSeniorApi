@@ -40,7 +40,7 @@ public class PostController : ControllerBase
         
         if (!string.IsNullOrEmpty(post_title))
         {
-            query = query.Filter(x => x.title, Supabase.Postgrest.Constants.Operator.ILike, $"%{post_title}%");
+            query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
         }
 
         try
@@ -50,34 +50,12 @@ public class PostController : ControllerBase
             int to = (page * pageSize) - 1;      // 9 for page 1
 
             var post = await query
-                .Order("created_at", Supabase.Postgrest.Constants.Ordering.Descending)
+                .Order("created_at", Ordering.Descending)
                 .Range(from, to)
                 .Get();
 
             if (post.Models.Count <= 0) return Ok("No record found");
-            /*
-            int total_Comment = 0;
-            int total_UpVote = 0;
-            int total_DownVote = 0;
-            
-            foreach (var p in post.Models)
-            {
-                total_Comment = await _supabase
-                    .From<Comment>()
-                    .Where(c => c.post_id == p.id)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
 
-                total_UpVote = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.PostId == p.id && v.IsUpvote == true)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
-
-                total_DownVote = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.PostId == p.id && v.IsUpvote == false)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
-            }
-            */
             var dtoData = post.Models.Select(p => new PostResponeDto
             {
                 id = p.id,
@@ -87,33 +65,31 @@ public class PostController : ControllerBase
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
+                community_name = p.Community == null ? null : p.Community.Name,
                 created_at = p.created_at,
                 title = p.title,
                 text = p.text,
                 postImage_url = p.PostImage?
                                 .Select(img => img.image_url)   //access each image object
                                 .ToList() ?? new List<string>(),
-                //total_comment = total_Comment,
-                //total_upVote = total_UpVote,
-                //total_downVote = total_DownVote
             });
 
             foreach (var data in dtoData)
             {
                 data.total_comment = await _supabase
                     .From<Comment>()
-                    .Where(c => c.post_id == data.id)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+                    .Where(c => c.PostId == data.id)
+                    .Count(CountType.Exact);
 
                 data.total_upVote = await _supabase
                     .From<Vote>()
                     .Where(v => v.PostId == data.id && v.IsUpvote == true)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+                    .Count(CountType.Exact);
 
                 data.total_downVote = await _supabase
                     .From<Vote>()
                     .Where(v => v.PostId == data.id && v.IsUpvote == false)
-                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+                    .Count(CountType.Exact);
             }
 
             return Ok(dtoData);

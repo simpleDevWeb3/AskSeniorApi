@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="DTO\CommunityDto.cs.ignore" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.10.3" />
     <PackageReference Include="Supabase" Version="1.1.1" />
@@ -18,11 +14,6 @@
 
   <ItemGroup>
     <Folder Include="Services\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Controllers\CommnunityController.cs" />
-    <None Include="Models\Community.cs" />
   </ItemGroup>
 
 </Project>

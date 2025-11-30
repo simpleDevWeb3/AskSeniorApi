@@ -13,7 +13,6 @@
 
         public string? community_id { get; set; }
         public string? community_name { get; set; }
-        public string? community_avatar_url { get; set; }
 
         public DateTime created_at { get; set; }
 
@@ -24,7 +23,5 @@
         public int total_upVote { get; set; }
         public int total_downVote { get; set; }
         public int total_comment { get; set; }
-
-        //public List<string>? comment { get; set; }
     }
 }
