@@ -62,8 +62,6 @@ public class PostController : ControllerBase
 
             if (post.Models.Count <= 0) return Ok(new List<PostResponeDto>()); ;
 
-
-
             var dtoData = post.Models.Select(p => new PostResponeDto
             {
                 id = p.id,
@@ -86,7 +84,7 @@ public class PostController : ControllerBase
                 total_downVote = p.vote?.Count(v => !v.IsUpvote && v.CommentId == null) ?? 0,
 
                 Comment = comments
-            }).ToList();
+            });
 
             return Ok(dtoData);
         }
@@ -99,7 +97,7 @@ public class PostController : ControllerBase
     [HttpPost("createPost")]
     public async Task<IActionResult> CreatePost([FromForm] PostCreateDto newPost)
     {
-        var post = await _supabase.From<Post>().Select("*").Get();
+        //var post = await _supabase.From<Post>().Select("*").Get();
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
                                                                 // 1. Get the raw value
         string? incomingId = newPost.community_id.Clean();
@@ -114,7 +112,10 @@ public class PostController : ControllerBase
                 community_id = incomingId,
                 created_at = DateTime.Now,
                 title = newPost.title,
-                text = newPost.text
+                text = newPost.text,
+                
+                //comment = null,
+                //vote = null
             };
 
             await _supabase.From<Post>().Insert(dtoData_post);
@@ -192,11 +193,22 @@ public class PostController : ControllerBase
     {
         try
         {
+            /*
+            await _supabase
+                .From<Vote>()
+                .Where(v => v.PostId == post_id)
+                .Delete();
+
+            await _supabase
+                .From<Comment>()
+                .Where(c => c.PostId == post_id)
+                .Delete();
+            */
             await _supabase
                 .From<Post>()
                 .Where(p => p.id == post_id)
                 .Delete();
-
+            
             return NoContent();
         }
         catch (Exception ex)

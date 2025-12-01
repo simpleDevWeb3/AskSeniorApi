@@ -1,5 +1,6 @@
 ﻿using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
+using Newtonsoft.Json;
 
 namespace AskSeniorApi.Models;
 
@@ -22,8 +23,9 @@ public class Post: BaseModel
     [Column("text")]
     public string text { get; set; }
 
-
+    [JsonIgnore]
     public List<Comment>? comment { get; set; }
+    [JsonIgnore]
     public List<Vote>? vote { get; set; }
 
     [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
