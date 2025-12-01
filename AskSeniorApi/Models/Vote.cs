@@ -24,4 +24,11 @@ public class Vote : BaseModel
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
+
+    [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
+    public User User { get; set; }
+
+    [Reference(typeof(Post), ReferenceAttribute.JoinType.Left)]
+    public Post Post { get; set; }
+
 }

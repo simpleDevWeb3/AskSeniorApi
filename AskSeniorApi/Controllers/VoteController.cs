@@ -1,11 +1,14 @@
 ﻿using AskSeniorApi.DTO;
+using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Supabase;
 using System.Security.Claims;
 using static AskSeniorApi.Models.Auth;
+using static Supabase.Postgrest.Constants;
 
 namespace AskSeniorApi.Controllers;
 
@@ -105,7 +108,41 @@ public class VoteController : ControllerBase
 
         return Ok(new { message = "Vote updated", vote = ToDto(currentVote) });
     }
+    [HttpGet("user")]
+    public async Task<IActionResult> GetAllVOtes(string? user_id)
+    {
+        try
+        {
+            user_id = user_id.Clean();
 
+            var query = _supabase.From<Vote>().Select("*");
+
+            var vote = await _supabase
+                .From<Vote>()
+                .Where(v => v.UserId == user_id)
+                .Get();
+            if (!string.IsNullOrWhiteSpace(user_id))
+            {
+                query = query.Where(v => v.UserId == user_id);
+            }
+            if (vote.Models.Count <= 0) return Ok(new List<PostResponeDto>()); ;
+            var dtoData = vote.Models.Select(v => new VoteResponseDto
+            {
+                vote_id = v.VoteId,
+                post_id = v.PostId,
+                comment_id = v.CommentId,
+                user_id = v.UserId,
+                is_upvote = v.IsUpvote,
+            }).ToList();
+
+
+            return Ok(dtoData);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
     [HttpDelete("delete")]
     public async Task<IActionResult> DeleteVote([FromBody] DeleteVoteDto dto)
     {

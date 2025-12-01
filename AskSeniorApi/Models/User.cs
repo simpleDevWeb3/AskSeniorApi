@@ -6,6 +6,7 @@ namespace AskSeniorApi.Models;
 [Table("user")]
 public class User : BaseModel
 {
+    [PrimaryKey("id", false)]
     [Column("id")]
     public string id { get; set; }
 
