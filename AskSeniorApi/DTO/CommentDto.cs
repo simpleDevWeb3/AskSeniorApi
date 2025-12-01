@@ -13,6 +13,9 @@ public class CommentDto
     public string? parent_id { get; set; }
     public string? reply_to { get; set; }
 
+    public int total_upVote { get; set; } = 0;
+    public int total_downVote { get; set; } = 0;
+
     public List<CommentDto> sub_comment { get; set; } = new List<CommentDto>();
 }
 

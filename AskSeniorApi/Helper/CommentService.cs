@@ -24,8 +24,8 @@ public class CommentService : ICommentService
     {
 
         var comments = await _supabase
-            .From<Comment>()
-            .Select("*")
+            .From<CommentRespone>()
+            .Select("*, vote(*)")
             .Where(c => c.PostId == postId)
             .Order(c => c.CreatedAt, Ordering.Descending)
             .Get();
@@ -40,7 +40,9 @@ public class CommentService : ICommentService
                 content = c.Content,
                 created_at = c.CreatedAt,
                 parent_id = c.ParentId,
-                reply_to = c.ParentId.IsNullOrEmpty() ? null : c.Parent.User.name
+                reply_to = c.ParentId.IsNullOrEmpty() ? null : c.Parent.User.name,
+                total_upVote = c.vote?.Count(v => v.IsUpvote && v.CommentId != null) ?? 0,
+                total_downVote = c.vote?.Count(v => !v.IsUpvote && v.CommentId != null) ?? 0,
             })
             .ToList();
 
