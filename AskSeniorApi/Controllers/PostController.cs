@@ -3,6 +3,7 @@ using AskSeniorApi.Helper;
 using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Supabase;
 using static Supabase.Postgrest.Constants;
 namespace AskSeniorApi.Controllers;
@@ -103,18 +104,18 @@ public class PostController : ControllerBase
 
         try
         {
-            var dtoData_post = new Post
+            var dtoData_post = new PostInsert
             {
                 id = "P" + unix,
                 user_id = newPost.user_id,
                 topic_id = newPost.topic_id,
-                community_id = incomingId,
+                community_id = newPost.community_id,
                 created_at = DateTime.Now,
                 title = newPost.title,
-                text = newPost.text,
+                text = newPost.text
             };
 
-            await _supabase.From<Post>().Insert(dtoData_post);
+            await _supabase.From<PostInsert>().Insert(dtoData_post);
 
             if (newPost.image != null && newPost.image.Length > 0)
             {

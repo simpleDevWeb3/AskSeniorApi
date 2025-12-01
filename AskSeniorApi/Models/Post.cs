@@ -1,6 +1,6 @@
 ﻿using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
-using Newtonsoft.Json;
+//using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AskSeniorApi.Models;
 
@@ -23,10 +23,9 @@ public class Post: BaseModel
     [Column("text")]
     public string text { get; set; }
 
-    [JsonIgnore]
     public List<Comment>? comment { get; set; }
-    [JsonIgnore]
     public List<Vote>? vote { get; set; }
+
 
     [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
     public User User { get; set; }
@@ -39,4 +38,25 @@ public class Post: BaseModel
 
     [Reference(typeof(Community), ReferenceAttribute.JoinType.Left)]
     public Community? Community{ get; set; }
+}
+
+
+[Table("post")]
+public class PostInsert : BaseModel
+{
+    [PrimaryKey("id", false)]
+    [Column("id")]
+    public string id { get; set; }
+    [Column("op_id")]
+    public string user_id { get; set; }
+    [Column("topic_id")]
+    public string topic_id { get; set; }
+    [Column("community_id")]
+    public string? community_id { get; set; }
+    [Column("created_at")]
+    public DateTime created_at { get; set; }
+    [Column("title")]
+    public string title { get; set; }
+    [Column("text")]
+    public string text { get; set; }
 }
