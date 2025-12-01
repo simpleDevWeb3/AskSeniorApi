@@ -11,6 +11,7 @@ public class CommentDto
     public string content { get; set; }
     public DateTime created_at { get; set; }
     public string? parent_id { get; set; }
+    public string? reply_to { get; set; }
 
     public List<CommentDto> sub_comment { get; set; } = new List<CommentDto>();
 }

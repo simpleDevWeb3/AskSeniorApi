@@ -26,6 +26,9 @@ public class Comment : BaseModel
 
     [Reference(typeof(Post), ReferenceAttribute.JoinType.Left)]
     public Post Post { get; set; }
+
+    [Reference(typeof(Comment), ReferenceAttribute.JoinType.Left, foreignKey: "parent_id")]
+    public Comment? Parent { get; set; }
 }
 
 
