@@ -66,7 +66,7 @@ public class VoteController : ControllerBase
             int maxNumber = 0;
             foreach (var id in voteIds)
             {
-                if (id.StartsWith("Vote") && int.TryParse(id.Substring(4), out int num))
+                if (id.StartsWith("V") && int.TryParse(id.Substring(1), out int num))
                 {
                     if (num > maxNumber)
                         maxNumber = num;
