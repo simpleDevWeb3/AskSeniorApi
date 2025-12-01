@@ -7,7 +7,7 @@ namespace AskSeniorApi.Helper;
 public interface ICommentService
 {
     Task<List<CommentDto>> GetCommentsAsync(string postId);
-    Task<List<CommentDto>> GetCommentsAsync2(string postId);
+    //Task<List<CommentDto>> GetCommentsAsync2(string postId);
 }
 
 public class CommentService : ICommentService
@@ -18,7 +18,7 @@ public class CommentService : ICommentService
     {
         _supabase = supabase;
     }
-
+    /*
     public async Task<List<CommentDto>> GetCommentsAsync(string postId)
     {
         
@@ -43,8 +43,8 @@ public class CommentService : ICommentService
         return comments;
         
     }
-
-    public async Task<List<CommentDto>> GetCommentsAsync2(string postId)
+    */
+    public async Task<List<CommentDto>> GetCommentsAsync(string postId)
     {
 
         var comments = await _supabase
@@ -59,6 +59,8 @@ public class CommentService : ICommentService
             {
                 comment_id = c.CommentId,
                 user_id = c.UserId,
+                user_name = c.User.name,
+                avatar_url = c.User.avatar_url,
                 content = c.Content,
                 created_at = c.CreatedAt,
                 parent_id = c.ParentId

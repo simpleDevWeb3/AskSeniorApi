@@ -48,7 +48,7 @@ public class PostController : ControllerBase
             {
                 post_id = post_id.ToUpper();    //ToUpper again after clean() ...
                 query = query.Where(x => x.id == post_id);
-                comments = await _commentService.GetCommentsAsync2(post_id);
+                comments = await _commentService.GetCommentsAsync(post_id);
             }
 
             // Calculate row positions (Supabase Range is inclusive)
