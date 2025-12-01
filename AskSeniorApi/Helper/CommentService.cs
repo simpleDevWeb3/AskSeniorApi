@@ -67,14 +67,15 @@ public class CommentService : ICommentService
             })
             .ToList();
 
-
+        /*
         var result = BuildSubHelper.BuildHierarchy<CommentDto>(
             commentDto,
             getParentId: c => c.parent_id,
             getId: c => c.comment_id!,
             setChildren: (parent, children) => parent.sub_comment = children
         );
+        */
 
-        return result;
+        return commentDto;
     }
 }

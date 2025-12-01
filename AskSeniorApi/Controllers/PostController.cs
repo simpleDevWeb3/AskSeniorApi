@@ -97,7 +97,6 @@ public class PostController : ControllerBase
     [HttpPost("createPost")]
     public async Task<IActionResult> CreatePost([FromForm] PostCreateDto newPost)
     {
-        //var post = await _supabase.From<Post>().Select("*").Get();
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
                                                                 // 1. Get the raw value
         string? incomingId = newPost.community_id.Clean();
@@ -113,9 +112,6 @@ public class PostController : ControllerBase
                 created_at = DateTime.Now,
                 title = newPost.title,
                 text = newPost.text,
-                
-                //comment = null,
-                //vote = null
             };
 
             await _supabase.From<Post>().Insert(dtoData_post);
@@ -152,7 +148,6 @@ public class PostController : ControllerBase
     [HttpPost("editPost/{post_id}")]
     public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEditDto editedPost)
     {
-        
         var posts = await _supabase
             .From<Post>()
             .Where(p => p.id == post_id)
@@ -168,10 +163,10 @@ public class PostController : ControllerBase
                 id = post.id,
                 user_id = post.user_id,
                 created_at = post.created_at,
-                topic_id = editedPost.topic_id,
-                community_id = editedPost.community_id,
-                title = editedPost.title,
-                text = editedPost.text
+                topic_id = editedPost.topic_id ?? post.topic_id,
+                community_id = editedPost.community_id ?? post.community_id,
+                title = editedPost.title ?? post.title,
+                text = editedPost.text ?? post.text
             };
 
             var response = await _supabase
