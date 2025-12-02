@@ -4,6 +4,7 @@ using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Supabase;
 using static Supabase.Postgrest.Constants;
 namespace AskSeniorApi.Controllers;
@@ -73,7 +74,7 @@ public class PostController : ControllerBase
                 id = p.id,
                 user_id = p.user_id,
                 user_name = p.User.name,
-                avatar_url = p.User.avatar_url,
+                avatar_url = p.community_id.IsNullOrEmpty() ? p.User.avatar_url : p.Community.AvatarUrl,
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
