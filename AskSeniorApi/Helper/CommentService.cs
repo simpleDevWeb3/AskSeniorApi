@@ -8,7 +8,7 @@ namespace AskSeniorApi.Helper;
 
 public interface ICommentService
 {
-    Task<List<CommentDto>> GetCommentsAsync(string postId);
+    Task<List<CommentDto>> GetCommentsAsync(string postId, string? current_user = null);
 }
 
 public class CommentService : ICommentService
@@ -20,7 +20,8 @@ public class CommentService : ICommentService
         _supabase = supabase;
     }
 
-    public async Task<List<CommentDto>> GetCommentsAsync(string postId)
+    public async Task<List<CommentDto>> GetCommentsAsync(string postId, 
+                                                        string? current_user = null)
     {
 
         var comments = await _supabase
@@ -42,9 +43,13 @@ public class CommentService : ICommentService
                 created_at = c.CreatedAt,
                 parent_id = c.ParentId,
                 reply_to = c.ParentId.IsNullOrEmpty() ? null : c.Parent.User.name,
-                total_upVote = c.vote?.Count(v => v.IsUpvote && v.CommentId != null) ?? 0,
-                total_downVote = c.vote?.Count(v => !v.IsUpvote && v.CommentId != null) ?? 0,
-
+                reply_to_content = c.ParentId.IsNullOrEmpty() ? null : c.Parent.Content,
+                total_upVote = c.vote?.Count(v => v.IsUpvote && v.CommentId == c.CommentId) ?? 0,
+                total_downVote = c.vote?.Count(v => !v.IsUpvote && v.CommentId == c.CommentId) ?? 0,
+                self_vote = c.vote?
+                            .Where(v => v.UserId == current_user)
+                            .Select(v => (bool?)v.IsUpvote)   // cast to nullable bool
+                            .FirstOrDefault(),
             })
             .ToList();
 

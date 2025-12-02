@@ -54,7 +54,7 @@ public class PostController : ControllerBase
             {
                 post_id = post_id.ToUpper();    //ToUpper again after clean() ...
                 query = query.Where(x => x.id == post_id);
-                comments = await _commentService.GetCommentsAsync(post_id);
+                comments = await _commentService.GetCommentsAsync(post_id, current_user);
             }
 
             // Calculate row positions (Supabase Range is inclusive)
@@ -86,8 +86,8 @@ public class PostController : ControllerBase
                                 .ToList() ?? new List<string>(),
 
                 total_comment = p.comment?.Count ?? 0,
-                total_upVote = p.vote?.Count(v => v.IsUpvote && v.CommentId == null) ?? 0,
-                total_downVote = p.vote?.Count(v => !v.IsUpvote && v.CommentId == null) ?? 0,
+                total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
+                total_downVote = p.vote?.Count(v => !v.IsUpvote) ?? 0,
                 self_vote = p.vote?
                             .Where(v => v.UserId == current_user && v.CommentId == null)
                             .Select(v => (bool?)v.IsUpvote)   // cast to nullable bool
@@ -215,7 +215,6 @@ public class PostController : ControllerBase
     {
         try
         {
-
             return Ok();
         }
         catch (Exception ex)
