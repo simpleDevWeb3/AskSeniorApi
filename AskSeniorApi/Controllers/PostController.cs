@@ -83,9 +83,14 @@ public class PostController : ControllerBase
                 total_comment = p.comment?.Count ?? 0,
                 total_upVote = p.vote?.Count(v => v.IsUpvote && v.CommentId == null) ?? 0,
                 total_downVote = p.vote?.Count(v => !v.IsUpvote && v.CommentId == null) ?? 0,
-
+                self_vote = p.vote?
+                            .Where(v => v.UserId == user_id && v.CommentId == null)
+                            .Select(v => v.IsUpvote)   // cast to nullable bool
+                            .FirstOrDefault(),
                 Comment = comments
             });
+
+            
 
             return Ok(dtoData);
         }

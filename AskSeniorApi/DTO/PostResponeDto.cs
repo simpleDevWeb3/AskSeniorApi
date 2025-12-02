@@ -24,6 +24,8 @@
         public int total_downVote { get; set; }
         public int total_comment { get; set; }
 
+        public bool? self_vote {  get; set; }
+
         public List<CommentDto> Comment { get; set; }
     }
 }
