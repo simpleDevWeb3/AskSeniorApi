@@ -89,7 +89,7 @@ public class PostController : ControllerBase
                 total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
                 total_downVote = p.vote?.Count(v => !v.IsUpvote) ?? 0,
                 self_vote = p.vote?
-                            .Where(v => v.UserId == current_user && v.CommentId == null)
+                            .Where(v => v.UserId == current_user)
                             .Select(v => (bool?)v.IsUpvote)   // cast to nullable bool
                             .FirstOrDefault(),
                 Comment = comments

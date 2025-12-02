@@ -13,7 +13,8 @@ public class CommentDto
     public DateTime created_at { get; set; }
 
     public string? parent_id { get; set; }
-    public string? reply_to { get; set; }
+    public string? reply_to_id { get; set; }
+    public string? reply_to_username { get; set; }
     public string? reply_to_content { get; set; }
 
     public int total_upVote { get; set; } = 0;
