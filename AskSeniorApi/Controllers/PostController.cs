@@ -109,7 +109,7 @@ public class PostController : ControllerBase
                 id = "P" + unix,
                 user_id = newPost.user_id,
                 topic_id = newPost.topic_id,
-                community_id = newPost.community_id,
+                community_id = incomingId,
                 created_at = DateTime.Now,
                 title = newPost.title,
                 text = newPost.text
