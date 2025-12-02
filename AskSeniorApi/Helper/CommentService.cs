@@ -34,6 +34,7 @@ public class CommentService : ICommentService
         var commentDto = comments.Models
             .Select(c => new CommentDto
             {
+                post_id = c.PostId,
                 comment_id = c.CommentId,
                 user_id = c.UserId,
                 user_name = c.User.name,

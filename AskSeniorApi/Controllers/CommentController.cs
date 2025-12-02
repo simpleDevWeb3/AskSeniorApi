@@ -41,7 +41,7 @@ public class CommentController : ControllerBase
 
         // 3️ Create the comment
         var newComment = new Comment
-        {
+        {   
             CommentId = commentId,
             UserId = dto.UserId,
             PostId = dto.PostId,
