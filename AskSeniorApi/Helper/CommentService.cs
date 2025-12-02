@@ -44,6 +44,7 @@ public class CommentService : ICommentService
                 reply_to = c.ParentId.IsNullOrEmpty() ? null : c.Parent.User.name,
                 total_upVote = c.vote?.Count(v => v.IsUpvote && v.CommentId != null) ?? 0,
                 total_downVote = c.vote?.Count(v => !v.IsUpvote && v.CommentId != null) ?? 0,
+
             })
             .ToList();
 
