@@ -43,6 +43,7 @@ public class CommentService : ICommentService
                 created_at = c.CreatedAt,
                 parent_id = c.ParentId,
                 reply_to = c.ParentId.IsNullOrEmpty() ? null : c.Parent.User.name,
+                reply_to_content = c.ParentId.IsNullOrEmpty() ? null : c.Parent.Content,
                 total_upVote = c.vote?.Count(v => v.IsUpvote && v.CommentId == c.CommentId) ?? 0,
                 total_downVote = c.vote?.Count(v => !v.IsUpvote && v.CommentId == c.CommentId) ?? 0,
                 self_vote = c.vote?
