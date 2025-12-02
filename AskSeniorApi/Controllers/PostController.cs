@@ -23,7 +23,12 @@ public class PostController : ControllerBase
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, string?post_id=null, int page = 1,int pageSize = 10)
+    public async Task<IActionResult> GetPost(string? current_user = null, 
+                                            string? user_id = null,
+                                            string? post_title = null,
+                                            string? post_id = null,
+                                            int page = 1,
+                                            int pageSize = 10)
     {
         try
         {
@@ -84,13 +89,11 @@ public class PostController : ControllerBase
                 total_upVote = p.vote?.Count(v => v.IsUpvote && v.CommentId == null) ?? 0,
                 total_downVote = p.vote?.Count(v => !v.IsUpvote && v.CommentId == null) ?? 0,
                 self_vote = p.vote?
-                            .Where(v => v.UserId == user_id && v.CommentId == null)
-                            .Select(v => v.IsUpvote)   // cast to nullable bool
+                            .Where(v => v.UserId == current_user && v.CommentId == null)
+                            .Select(v => (bool?)v.IsUpvote)   // cast to nullable bool
                             .FirstOrDefault(),
                 Comment = comments
             });
-
-            
 
             return Ok(dtoData);
         }
