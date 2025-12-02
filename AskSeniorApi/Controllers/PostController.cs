@@ -189,17 +189,6 @@ public class PostController : ControllerBase
     {
         try
         {
-            /*
-            await _supabase
-                .From<Vote>()
-                .Where(v => v.PostId == post_id)
-                .Delete();
-
-            await _supabase
-                .From<Comment>()
-                .Where(c => c.PostId == post_id)
-                .Delete();
-            */
             await _supabase
                 .From<Post>()
                 .Where(p => p.id == post_id)
@@ -212,4 +201,20 @@ public class PostController : ControllerBase
             return BadRequest(new {error = ex.Message});
         }
     }
+
+    [HttpPost("editPost/{post_id}")]
+    public async Task<IActionResult> BanPost(string post_id, [FromForm] PostEditDto editedPost)
+    {
+        try
+        {
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
 }

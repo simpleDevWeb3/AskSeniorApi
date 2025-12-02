@@ -31,4 +31,33 @@ public class Comment : BaseModel
     public Comment? Parent { get; set; }
 }
 
+[Table("comment")]
+
+public class CommentRespone : BaseModel
+{
+    [PrimaryKey("comment_id")]
+    [Column("comment_id")]
+    public string CommentId { get; set; }
+    [Column("post_id")]
+    public string PostId { get; set; }
+    [Column("user_id")]
+    public string UserId { get; set; }
+    [Column("content")]
+    public string Content { get; set; }
+    [Column("parent_id")]
+    public string ParentId { get; set; }
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+
+    public List<Vote>? vote { get; set; }
+
+
+    [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
+    public User User { get; set; }
+    [Reference(typeof(Post), ReferenceAttribute.JoinType.Left)]
+    public Post Post { get; set; }
+    [Reference(typeof(Comment), ReferenceAttribute.JoinType.Left, foreignKey: "parent_id")]
+    public Comment? Parent { get; set; }
+}
 
