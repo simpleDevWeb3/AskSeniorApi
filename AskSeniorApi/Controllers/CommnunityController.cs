@@ -217,8 +217,8 @@ public class CommunityController : ControllerBase
 
                     topics = topicRecords.Models.Select(t => new TopicDto
                     {
-                        Id = t.Id,
-                        Name = t.Name
+                        //Id = t.Id,
+                        // = t.Name
                     }).ToList();
                 }
 
