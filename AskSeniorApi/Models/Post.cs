@@ -1,6 +1,5 @@
 ﻿using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
-//using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AskSeniorApi.Models;
 

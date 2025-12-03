@@ -1,16 +1,17 @@
 ﻿using AskSeniorApi.DTO;
 using AskSeniorApi.Helper;
+using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Supabase;
+//using Supabase.Gotrue;
 using System.IdentityModel.Tokens.Jwt;
 using static AskSeniorApi.Models.Auth;
 using static Supabase.Postgrest.Constants;
-using Newtonsoft.Json;
-using AskSeniorApi.Helpers;
-using Microsoft.IdentityModel.Tokens;
+using AuthClient = Supabase.Gotrue;
 namespace AskSeniorApi.Controllers;
 
 [Route("api/[controller]")]
@@ -313,13 +314,8 @@ public class AuthController : ControllerBase
     [HttpPost("editAccount/{user_id}")]
     public async Task<IActionResult> EditAccount(string user_id, [FromForm] UserEditDto req)
     {
-        if (req.name == "null" ||
-            req.name == "undefined" ||
-            req.name == "")
-        {
-            req.name = null;
-        }
-        req.Email = req.Email.Clean();
+        req.name = req.name.Clean();
+        req.Password = req.Password.Clean();
         req.bio = req.bio.Clean();
 
         var allUsers = await _supabase
@@ -338,9 +334,10 @@ public class AuthController : ControllerBase
             if (allUsers.Models.Any(u => u.name == req.name)) return BadRequest(new { error = "duplicate name" });
         }
 
-        if (!req.Email.IsNullOrEmpty())
+        if (!req.Password.IsNullOrEmpty())
         {
-            if (allUsers.Models.Any(u => u.email == req.Email)) return BadRequest(new { error = "duplicate email" });
+            var attrs = new Supabase.Gotrue.UserAttributes { Password = req.Password };
+            var response = await _supabase.Auth.Update(attrs);
         }
 
         string? avatar_url = null;
@@ -365,7 +362,7 @@ public class AuthController : ControllerBase
                 name = req.name ?? user.name,
                 avatar_url = avatar_url ?? user.avatar_url,
                 banner_url = banner_url ?? user.banner_url,
-                email = req.Email ?? user.email,
+                email = user.email,
                 bio = req.bio ?? user.bio
             };
 
@@ -374,7 +371,7 @@ public class AuthController : ControllerBase
                 .Where(u => u.id == user_id)
                 .Update(dtoData);
 
-            return Ok(response);
+            return Ok(dtoData.id);
 
         }
         catch (Exception ex)

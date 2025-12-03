@@ -6,7 +6,7 @@ public static class StringExtensions
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
 
-        value = value.Trim().ToLower();
+        value = value.Trim();
         return value is "null" or "undefined" ? null : value;
     }
 }
