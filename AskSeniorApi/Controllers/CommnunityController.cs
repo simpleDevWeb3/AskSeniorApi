@@ -109,75 +109,126 @@ public class CommunityController : ControllerBase
 
 
 
-    // READ BY ID
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetCommunity(string id)
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchCommunities([FromQuery] string keyword)
     {
-        var community = await _client.From<Community>()
-            .Where(c => c.Id == id)
-            .Single();
+        if (string.IsNullOrWhiteSpace(keyword))
+            return BadRequest(new { error = "Keyword is required." });
 
-        if (community == null)
-            return NotFound();
-
-        return Ok(new CommunityDto
-        {
-            Id = community.Id,
-            AdminId = community.AdminId,
-            Name = community.Name,
-            Description = community.Description,
-            BannerUrl = community.BannerUrl,
-            AvatarUrl = community.AvatarUrl,
-            CreatedAt = community.CreatedAt
-        });
-    }
-
-    // UPDATE
-    [HttpPut("{id}")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UpdateCommunity(
-    string id,
-    [FromForm] UpdateCommunityDto dto,
-    [FromHeader] Guid currentUserId)
-    {
         try
         {
-            var existing = await _client.From<Community>()
-                .Where(c => c.Id == id)
+            // 1. Search for communities using ILIKE (case-insensitive, supports partial)
+            var communitiesResponse = await _client
+                .From<Community>()
+                .Filter("name", Supabase.Postgrest.Constants.Operator.ILike, $"%{keyword}%")
+                .Get();
+
+            var communities = communitiesResponse.Models;
+
+            if (!communities.Any())
+                return Ok(new { message = "No communities match your search.", data = new List<CommunityDto>() });
+
+            // 2. Fetch all community-topic links
+            var linksResponse = await _client.From<CommunityTopic>().Get();
+            var links = linksResponse.Models;
+
+            // 3. Collect all topic IDs referenced by these communities
+            var topicIds = links
+                .Where(l => communities.Any(c => c.Id == l.CommunityId))
+                .Select(l => l.TopicId)
+                .Distinct()
+                .ToList();
+
+            // 4. Fetch topic details in one query
+            var topicRecordsResponse = await _client
+                .From<Topic>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, topicIds)
+                .Get();
+
+            var topicMap = topicRecordsResponse.Models.ToDictionary(t => t.id);
+
+            // 5. Build the final DTO output
+            var dtoList = communities.Select(c =>
+            {
+                var relatedTopics = links
+                    .Where(l => l.CommunityId == c.Id)
+                    .Select(l => l.TopicId)
+                    .Where(id => topicMap.ContainsKey(id))
+                    .Select(id => new TopicDto
+                    {
+                        Id = id,
+                        Name = topicMap[id].name
+                    })
+                    .ToList();
+
+                return new CommunityDto
+                {
+                    Id = c.Id,
+                    AdminId = c.AdminId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    BannerUrl = c.BannerUrl,
+                    AvatarUrl = c.AvatarUrl,
+                    CreatedAt = c.CreatedAt,
+                    Topics = relatedTopics
+                };
+            }).ToList();
+
+            return Ok(dtoList);
+        }
+        catch (Exception ex)
+        {
+            return Ok(new { error = ex.Message });
+        }
+    }
+
+
+    [HttpPut("update")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdateCommunity([FromForm] UpdateCommunityRequest req)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            // 1. Check if community exists
+            var communityRes = await _client
+                .From<Community>()
+                .Select("*")
+                .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, req.CommunityId)
                 .Single();
+
+            var existing = communityRes;
 
             if (existing == null)
                 return NotFound(new { error = "Community not found." });
 
-            if (existing.AdminId != currentUserId)
-                return Unauthorized(new { error = "Only the community admin can edit this community." });
+            // 2. Upload new files if provided
+            string? bannerUrl = existing.BannerUrl;
+            string? avatarUrl = existing.AvatarUrl;
 
-            // Update text fields
-            if (!string.IsNullOrEmpty(dto.Name)) existing.Name = dto.Name;
-            if (!string.IsNullOrEmpty(dto.Description)) existing.Description = dto.Description;
+            if (req.BannerFile != null)
+                bannerUrl = await UploadFile.UploadFileAsync(req.BannerFile, "Banner", _client);
 
-            // Update files if provided
-            if (dto.BannerFile != null)
-                existing.BannerUrl = await UploadFile.UploadFileAsync(dto.BannerFile, "Banner", _client);
+            if (req.AvatarFile != null)
+                avatarUrl = await UploadFile.UploadFileAsync(req.AvatarFile, "Avatar", _client);
 
-            if (dto.AvatarFile != null)
-                existing.AvatarUrl = await UploadFile.UploadFileAsync(dto.AvatarFile, "Avatar", _client);
+            // 3. Update the community
+            existing.Name = req.Name ?? existing.Name;
+            existing.Description = req.Description ?? existing.Description;
+            existing.BannerUrl = bannerUrl;
+            existing.AvatarUrl = avatarUrl;
 
-            var result = await _client.From<Community>().Update(existing);
-            var updated = result.Models.FirstOrDefault();
+            var updateRes = await _client.From<Community>().Update(existing);
 
-            if (updated == null)
+            if (!updateRes.Models.Any())
                 return BadRequest(new { error = "Failed to update community." });
 
-            return Ok(new CommunityDto
+            return Ok(new
             {
-                Id = updated.Id,
-                AdminId = updated.AdminId,
-                Name = updated.Name,
-                Description = updated.Description,
-                BannerUrl = updated.BannerUrl,
-                AvatarUrl = updated.AvatarUrl,
-                CreatedAt = updated.CreatedAt
+                message = "Community successfully updated.",
+                communityId = req.CommunityId
             });
         }
         catch (Exception ex)
@@ -185,6 +236,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 
@@ -217,8 +269,8 @@ public class CommunityController : ControllerBase
 
                     topics = topicRecords.Models.Select(t => new TopicDto
                     {
-                        Id = t.Id,
-                        Name = t.Name
+                        Id = t.id,
+                        Name = t.name
                     }).ToList();
                 }
 
@@ -246,5 +298,6 @@ public class CommunityController : ControllerBase
             return Ok(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
+
 
 }

@@ -50,13 +50,18 @@ namespace AskSeniorApi.DTOs
         public string? AvatarUrl { get; set; }
     }
 
-    public class UpdateCommunityDto
+    public class UpdateCommunityRequest
     {
+        [Required]
+        public string CommunityId { get; set; } = string.Empty;
+
         public string? Name { get; set; }
         public string? Description { get; set; }
 
-        // Optional file uploads for updating images
+        [FromForm(Name = "bannerFile")]
         public IFormFile? BannerFile { get; set; }
+
+        [FromForm(Name = "avatarFile")]
         public IFormFile? AvatarFile { get; set; }
     }
 
