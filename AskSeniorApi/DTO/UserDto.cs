@@ -23,3 +23,9 @@ public class UserEditDto
 
     public List<string>? Preference { get; set; }
 }
+
+public class BanUserDto
+{
+    public string? user_id { get; set; }
+    public string reason { get; set; }
+}

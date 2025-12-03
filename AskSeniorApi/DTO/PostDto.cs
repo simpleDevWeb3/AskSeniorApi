@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.Contracts;
+﻿using Supabase.Postgrest.Attributes;
+using System.Diagnostics.Contracts;
 
 namespace AskSeniorApi.DTO;
 
@@ -52,3 +53,10 @@ public class PostEditDto
     public List<string>? original_image_id { get; set; }
     public IFormFile[]? new_image { get; set; }
 }
+
+public class BanPostDto
+{
+    public string? post_id { get; set; }
+    public string reason { get; set; }
+}
+

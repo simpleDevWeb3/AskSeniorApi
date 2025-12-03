@@ -379,4 +379,42 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpPost("banUser")]
+    public async Task<IActionResult> banUser([FromForm] BanUserDto banned)
+    {
+        long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
+        int bannedUser = await _supabase
+            .From<Banned>()
+            .Filter("user_id", Operator.Equals, banned.user_id)
+            .Count(CountType.Exact);
+
+        try
+        {
+            if (bannedUser <= 0)
+            {
+                var dtoData = new Banned
+                {
+                    id = "BAN" + unix + "U",
+                    post_id = null,
+                    user_id = banned.user_id,
+                    community_id = null,
+                    created_at = DateTime.Now,
+                    reason = banned.reason,
+                };
+
+                await _supabase.From<Banned>().Insert(dtoData);
+            }
+            else
+            {
+                await _supabase.From<Banned>().Where(b => b.user_id == banned.user_id).Delete();
+            }
+
+                return Ok("Status updated");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }

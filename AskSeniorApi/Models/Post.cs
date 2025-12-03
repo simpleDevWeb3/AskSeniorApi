@@ -38,6 +38,7 @@ public class Post: BaseModel
     public Community? Community{ get; set; }
 }
 
+
 [Table("post")]
 public class PostEdit : BaseModel
 {
@@ -80,4 +81,6 @@ public class PostInsert : BaseModel
     public string title { get; set; }
     [Column("text")]
     public string text { get; set; }
+    [Column("is_banned")]
+    public bool? is_banned { get; set; }
 }

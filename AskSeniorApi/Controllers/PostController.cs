@@ -24,13 +24,15 @@ public class PostController : ControllerBase
     }
 
 
+
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? current_user = null, 
-                                            string? user_id = null,
-                                            string? post_title = null,
-                                            string? post_id = null,
-                                            int page = 1,
-                                            int pageSize = 10)
+    public async Task<IActionResult> GetPost(
+    string? current_user = null, 
+    string? user_id = null,
+    string? post_title = null,
+    string? post_id = null,
+    int page = 1,
+    int pageSize = 10)
     {
         try
         {
@@ -106,6 +108,8 @@ public class PostController : ControllerBase
         }
     }
 
+
+
     [HttpPost("createPost")]
     public async Task<IActionResult> CreatePost([FromForm] PostCreateDto newPost)
     {
@@ -123,7 +127,8 @@ public class PostController : ControllerBase
                 community_id = incomingId,
                 created_at = DateTime.Now,
                 title = newPost.title,
-                text = newPost.text
+                text = newPost.text,
+                is_banned = false,
             };
 
             await _supabase.From<PostInsert>().Insert(dtoData_post);
@@ -157,6 +162,8 @@ public class PostController : ControllerBase
         }
     }
     
+
+
     [HttpPut("editPost/{post_id}")]
     public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEditDto editedPost)
     {
@@ -221,6 +228,7 @@ public class PostController : ControllerBase
     }
 
 
+
     [HttpDelete("deletePost/{post_id}")]
     public async Task<IActionResult> DeletePost(string post_id)
     {
@@ -239,11 +247,27 @@ public class PostController : ControllerBase
         }
     }
 
-    [HttpPost("banPost/{post_id}")]
-    public async Task<IActionResult> BanPost(string post_id, [FromForm] PostEditDto editedPost)
+
+
+    [HttpPost("banPost")]
+    public async Task<IActionResult> BanPost([FromForm] BanPostDto banned)
     {
+        long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
+
         try
         {
+            var dtoData = new Banned
+            {
+                id = "BAN" + unix + "P",
+                post_id = banned.post_id,
+                user_id = null,
+                community_id = null,
+                created_at = DateTime.Now,
+                reason = banned.reason,
+            };
+
+            await _supabase.From<Banned>().Insert(dtoData);
+
             return Ok();
         }
         catch (Exception ex)

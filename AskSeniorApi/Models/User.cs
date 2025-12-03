@@ -28,4 +28,7 @@ public class User : BaseModel
 
     [Column("bio")]
     public string? bio { get; set; }
+
+    [Column("is_banned")]
+    public bool? is_banned { get; set; }
 }
