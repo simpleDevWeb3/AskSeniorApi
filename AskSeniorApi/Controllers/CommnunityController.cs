@@ -4,6 +4,7 @@ using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
 using Supabase;
+using Supabase.Interfaces;
 
 namespace AskSeniorApi.Controllers;
 
@@ -269,13 +270,13 @@ public class CommunityController : ControllerBase
 
                     topics = topicRecords.Models.Select(t => new TopicDto
                     {
-<<<<<<< HEAD
+
                         Id = t.id,
                         Name = t.name
-=======
-                        //Id = t.Id,
-                        // = t.Name
->>>>>>> 61c421dd068f16348840651c1569ccb9863418a3
+
+                        
+                       
+
                     }).ToList();
                 }
 
@@ -303,6 +304,67 @@ public class CommunityController : ControllerBase
             return Ok(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
+
+    [HttpPost("join")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> JoinCommunity([FromForm] JoinCommunityFormRequest req)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            // 1. Validate user exists
+            var userCheck = await _client
+                .From<User>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, req.UserId)
+                .Single();
+
+            if (userCheck == null)
+                return BadRequest(new { error = "User does not exist." });
+
+            // 2. Validate community exists
+            var communityCheck = await _client
+                .From<Community>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, req.CommunityId)
+                .Single();
+
+            if (communityCheck == null)
+                return BadRequest(new { error = "Community does not exist." });
+
+            // 3. Prevent duplicate membership
+            var existing = await _client
+                .From<Member>()
+                .Where(m => m.user_id == req.UserId && m.community_id == req.CommunityId)
+                .Get();
+
+            if (existing.Models.Any())
+                return BadRequest(new { error = "User already joined the community." });
+
+            // 4. Insert new record
+            var newMember = new Member
+            {
+                user_id = req.UserId,
+                community_id = req.CommunityId,
+                status = "active",
+                created_at = DateTime.UtcNow
+            };
+
+            await _client.From<Member>().Insert(newMember);
+
+            return Ok(new
+            {
+                message = "User successfully joined the community.",
+                userId = req.UserId,
+                communityId = req.CommunityId
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
 
 
 }
