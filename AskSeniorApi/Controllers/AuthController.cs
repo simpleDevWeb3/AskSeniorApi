@@ -410,7 +410,7 @@ public class AuthController : ControllerBase
                 await _supabase.From<Banned>().Where(b => b.user_id == banned.user_id).Delete();
             }
 
-                return Ok("Status updated");
+            return Ok("Status updated");
         }
         catch (Exception ex)
         {

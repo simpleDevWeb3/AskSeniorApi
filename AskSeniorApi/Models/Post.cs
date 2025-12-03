@@ -21,6 +21,8 @@ public class Post: BaseModel
     public string title { get; set; }
     [Column("text")]
     public string text { get; set; }
+    [Column("is_banned")]
+    public bool is_banned { get; set; }
 
     public List<Comment>? comment { get; set; }
     public List<Vote>? vote { get; set; }

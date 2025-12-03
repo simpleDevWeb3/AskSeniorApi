@@ -67,6 +67,7 @@ public class PostController : ControllerBase
             int to = (page * pageSize) - 1;      // 9 for page 1
 
             var post = await query
+                 .Where(p => p.is_banned == false)
                  .Order("created_at", Ordering.Descending)
                  .Range(from, to)
                  .Get();
@@ -253,22 +254,31 @@ public class PostController : ControllerBase
     public async Task<IActionResult> BanPost([FromForm] BanPostDto banned)
     {
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
-
+        int bannedPost = await _supabase
+                            .From<Banned>()
+                            .Filter("post_id", Operator.Equals, banned.post_id)
+                            .Count(CountType.Exact);
         try
         {
-            var dtoData = new Banned
+            if (bannedPost <= 0)
             {
-                id = "BAN" + unix + "P",
-                post_id = banned.post_id,
-                user_id = null,
-                community_id = null,
-                created_at = DateTime.Now,
-                reason = banned.reason,
-            };
+                var dtoData = new Banned
+                {
+                    id = "BAN" + unix + "P",
+                    post_id = banned.post_id,
+                    user_id = null,
+                    community_id = null,
+                    created_at = DateTime.Now,
+                    reason = banned.reason,
+                };
+                await _supabase.From<Banned>().Insert(dtoData);
+            }
+            else
+            {
+                await _supabase.From<Banned>().Where(b => b.post_id == banned.post_id).Delete();
+            }
 
-            await _supabase.From<Banned>().Insert(dtoData);
-
-            return Ok();
+            return Ok("Status updated");
         }
         catch (Exception ex)
         {
