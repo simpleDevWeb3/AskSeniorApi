@@ -58,8 +58,8 @@ public class PostEdit : BaseModel
     [Column("text")]
     public string text { get; set; }
 
-    //[Reference(typeof(PostImage), ReferenceAttribute.JoinType.Left)]
-    //public List<PostImage> PostImage { get; set; }
+    [Reference(typeof(PostImage), ReferenceAttribute.JoinType.Left)]
+    public List<PostImage> PostImage { get; set; }
 }
 
 

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Supabase;
+using System.Collections.Immutable;
 using static Supabase.Postgrest.Constants;
 namespace AskSeniorApi.Controllers;
 
@@ -161,11 +162,10 @@ public class PostController : ControllerBase
     {
         var posts = await _supabase
             .From<PostEdit>()
-            //.Select("*, postImage(*)")
             .Where(p => p.id == post_id)
             .Get();
 
-        if (posts.Models.Count <= 0) return NotFound("no record matched");
+        if (posts.Models.Count <= 0) return NotFound();
         var post = posts.Models.FirstOrDefault();
 
         try
@@ -186,12 +186,10 @@ public class PostController : ControllerBase
                 .From<PostEdit>()
                 .Where(p => p.id == post_id)
                 .Update(dtoData);
-            /*
-            if (editedPost.new_image != null && editedPost.new_image.Length > 0)
-            {
-                if (post.PostImage.Count <= 0) return Ok(dtoData + "no image can be edited");
 
-                for (int i = 0; i < editedPost.new_image.Count(); i++)//var file in editedPost.new_image)
+            if (editedPost.new_image != null && editedPost.new_image.Count() > 0)
+            {
+                for (int i = 0; i < editedPost.new_image.Count(); i++)
                 {
                     var original_image_id = editedPost.original_image_id[i];
                     var file = editedPost.new_image[i];
@@ -201,6 +199,8 @@ public class PostController : ControllerBase
                         string url = await UploadFile.UploadFileAsync(file, "PostImage", _supabase);
                         var dtoData_postImage = new PostImage
                         {
+                            image_id = original_image_id,
+                            post_id = post.id,
                             image_url = url,
                         };
 
@@ -210,7 +210,7 @@ public class PostController : ControllerBase
                             .Update(dtoData_postImage);
                     }
                 }
-            }*/
+            }
             
             return Ok(dtoData.id);
         }
