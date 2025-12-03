@@ -20,7 +20,7 @@ public class PostResponeDto
 
     public string title { get; set; }
     public string text { get; set; }
-    public List<string>? postImage_url { get; set; }
+    public Dictionary<string, string>? postImage_url { get; set; }
 
     public int total_upVote { get; set; }
     public int total_downVote { get; set; }
@@ -49,5 +49,12 @@ public class PostEditDto
     public string? title { get; set; }
     public string? text { get; set; }
 
-    public IFormFile[]? image { get; set; }
+    public List<string>? image_id { get; set; }
+    public IFormFile[]? new_image { get; set; }
+}
+
+public class ImageUpdate
+{
+    public string old_url { get; set; }
+    public IFormFile new_image { get; set; }
 }
