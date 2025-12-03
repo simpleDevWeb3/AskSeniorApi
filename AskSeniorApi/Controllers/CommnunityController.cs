@@ -298,6 +298,123 @@ public class CommunityController : ControllerBase
             return Ok(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
+    [HttpGet("getbyid")]
+    public async Task<IActionResult> GetCommunityById(string id)
+    {
+        try
+        {
+            // 1. Get the community by ID
+            var communityResponse = await _client
+                .From<Community>()
+                .Where(c => c.Id == id)
+                .Single();
+
+            if (communityResponse == null)
+                return NotFound(new { message = "Community not found." });
+
+            // 2. Get associated topic IDs
+            var communityTopics = await _client
+                .From<CommunityTopic>()
+                .Where(ct => ct.CommunityId == id)
+                .Get();
+
+            var topicIds = communityTopics.Models.Select(ct => ct.TopicId).ToList();
+
+            // 3. Get topic details
+            var topics = new List<TopicDto>();
+            if (topicIds.Any())
+            {
+                var topicRecords = await _client
+                    .From<Topic>()
+                    .Filter("id", Supabase.Postgrest.Constants.Operator.In, topicIds)
+                    .Get();
+
+                topics = topicRecords.Models.Select(t => new TopicDto
+                {
+                    Id = t.id,
+                    Name = t.name
+                }).ToList();
+            }
+
+            // 4. Map to DTO
+            var communityDto = new CommunityDto
+            {
+                Id = communityResponse.Id,
+                AdminId = communityResponse.AdminId,
+                Name = communityResponse.Name,
+                Description = communityResponse.Description,
+                BannerUrl = communityResponse.BannerUrl,
+                AvatarUrl = communityResponse.AvatarUrl,
+                CreatedAt = communityResponse.CreatedAt,
+                Topics = topics
+            };
+
+            return Ok(communityDto);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = "Cannot connect to Supabase", error = ex.Message });
+        }
+    }
+
+    [HttpPost("join")]
+    public async Task<IActionResult> JoinCommunity(string userId, string communityId)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(communityId))
+            return BadRequest(new { error = "UserId and CommunityId are required." });
+
+        try
+        {
+            // 1. Validate user exists
+            var userCheck = await _client
+                .From<User>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, userId)
+                .Single();
+
+            if (userCheck == null)
+                return BadRequest(new { error = "User does not exist." });
+
+            // 2. Validate community exists
+            var communityCheck = await _client
+                .From<Community>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, communityId)
+                .Single();
+
+            if (communityCheck == null)
+                return BadRequest(new { error = "Community does not exist." });
+
+            // 3. Prevent duplicate membership
+            var existing = await _client
+                .From<Member>()
+                .Where(m => m.user_id == userId && m.community_id == communityId)
+                .Get();
+
+            if (existing.Models.Any())
+                return BadRequest(new { error = "User already joined the community." });
+
+            // 4. Insert new record
+            var newMember = new Member
+            {
+                user_id = userId,
+                community_id = communityId,
+                created_at = DateTime.UtcNow
+            };
+
+            await _client.From<Member>().Insert(newMember);
+
+            return Ok(new
+            {
+                message = "User successfully joined the community.",
+                userId,
+                communityId
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
 
 
 }
