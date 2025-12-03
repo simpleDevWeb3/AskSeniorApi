@@ -72,9 +72,7 @@ public class CommunityController : ControllerBase
             // 5. Insert related CommunityTopic rows
             if (req.TopicIds != null && req.TopicIds.Any())
             {
-                // Remove duplicates
                 var uniqueTopicIds = req.TopicIds.Distinct();
-
                 foreach (var topicId in uniqueTopicIds)
                 {
                     var ct = new CommunityTopic
@@ -88,11 +86,19 @@ public class CommunityController : ControllerBase
                 }
             }
 
+            // 6. Automatically join creator to the community
+            var newMember = new Member
+            {
+                user_id = req.AdminId.ToString(),
+                community_id = communityId,
+                created_at = DateTime.UtcNow
+            };
 
+            await _client.From<Member>().Insert(newMember);
 
             return Ok(new
             {
-                message = "Community successfully created.",
+                message = "Community successfully created and creator joined automatically.",
                 communityId = communityId
             });
         }
@@ -101,6 +107,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 
