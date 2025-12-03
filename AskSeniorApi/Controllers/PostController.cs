@@ -75,7 +75,7 @@ public class PostController : ControllerBase
                 id = p.id,
                 user_id = p.user_id,
                 user_name = p.User.name,
-                avatar_url = p.community_id.IsNullOrEmpty() ? "debug: empty" : "debug: not empty",
+                avatar_url = p.community_id.IsNullOrEmpty() ? p.User.avatar_url : p.Community.AvatarUrl,
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
@@ -84,8 +84,8 @@ public class PostController : ControllerBase
                 title = p.title,
                 text = p.text,
                 postImage_url = p.PostImage?
-                                .Select(img => img.image_url)   //access each image object
-                                .ToList() ?? new List<string>(),
+                                .ToDictionary(img => img.image_id, img => img.image_url)
+                                ?? new Dictionary<string, string>(),
 
                 total_comment = p.comment?.Count ?? 0,
                 total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
@@ -184,7 +184,28 @@ public class PostController : ControllerBase
                 .From<Post>()
                 .Where(p => p.id == post_id)
                 .Update(dtoData);
+            /*
+            if (editedPost.image != null && editedPost.image.Length > 0)
+            {
+                int i = 0;
+                foreach (var file in editedPost.image)
+                {
+                    if (file.Length > 0)
+                    {
+                        string url = await UploadFile.UploadFileAsync(file, "PostImage", _supabase);
 
+                        var dtoData_postImage = new PostImage
+                        {
+                            image_id = dtoData_post.id + "IMG" + i++,
+                            post_id = dtoData_post.id,
+                            image_url = url,
+                        };
+
+                        await _supabase.From<PostImage>().Insert(dtoData_postImage);
+                    }
+                }
+            }
+            */
             return Ok(dtoData.id);
         }
         catch (Exception ex)
@@ -212,7 +233,7 @@ public class PostController : ControllerBase
         }
     }
 
-    [HttpPost("editPost/{post_id}")]
+    [HttpPost("banPost/{post_id}")]
     public async Task<IActionResult> BanPost(string post_id, [FromForm] PostEditDto editedPost)
     {
         try
