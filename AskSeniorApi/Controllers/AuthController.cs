@@ -313,26 +313,38 @@ public class AuthController : ControllerBase
     [HttpPost("editAccount/{user_id}")]
     public async Task<IActionResult> EditAccount(string user_id, [FromForm] UserEditDto req)
     {
-        req.name = req.name.Clean();
+        if (req.name == "null" ||
+            req.name == "undefined" ||
+            req.name == "")
+        {
+            req.name = null;
+        }
         req.Email = req.Email.Clean();
         req.bio = req.bio.Clean();
 
-        var users = await _supabase
+        var allUsers = await _supabase
             .From<User>()
-            .Where(u => u.id == user_id)
             .Get();
 
-        if (users.Models.Count <= 0) return NotFound();
-        var user = users.Models.FirstOrDefault();
+        var users = allUsers.Models
+                    .Where(u => u.id == user_id)
+                    .ToList();
+
+        if (users.Count <= 0) return NotFound();
+        var user = users.FirstOrDefault();
 
         if (!req.name.IsNullOrEmpty())
         {
-            if (users.Models.Any(u => u.name == req.name)) return BadRequest(new { error = "duplicate name" });
+            if (allUsers.Models.Any(u => u.name == req.name)) return BadRequest(new { error = "duplicate name" });
+        }
+
+        if (!req.Email.IsNullOrEmpty())
+        {
+            if (allUsers.Models.Any(u => u.email == req.Email)) return BadRequest(new { error = "duplicate email" });
         }
 
         string? avatar_url = null;
         string? banner_url = null;
-
 
         if (req.AvatarFile != null && req.AvatarFile.Length > 0)
         {
@@ -341,7 +353,7 @@ public class AuthController : ControllerBase
 
         if (req.BannerFile != null && req.BannerFile.Length > 0)
         {
-            banner_url = await UploadFile.UploadFileAsync(req.BannerFile, "Avatar", _supabase);
+            banner_url = await UploadFile.UploadFileAsync(req.BannerFile, "Banner", _supabase);
         }
 
         try
@@ -362,7 +374,7 @@ public class AuthController : ControllerBase
                 .Where(u => u.id == user_id)
                 .Update(dtoData);
 
-            return Ok();
+            return Ok(response);
 
         }
         catch (Exception ex)
