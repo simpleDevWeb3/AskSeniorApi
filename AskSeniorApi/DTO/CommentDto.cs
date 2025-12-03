@@ -15,7 +15,7 @@ public class CommentDto
 
     public int total_upVote { get; set; } = 0;
     public int total_downVote { get; set; } = 0;
-
+    public bool? self_vote { get; set; }
     public List<CommentDto> sub_comment { get; set; } = new List<CommentDto>();
 }
 
