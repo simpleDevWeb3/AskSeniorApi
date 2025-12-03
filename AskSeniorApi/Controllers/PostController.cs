@@ -4,6 +4,7 @@ using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Supabase;
 using static Supabase.Postgrest.Constants;
 namespace AskSeniorApi.Controllers;
@@ -23,7 +24,12 @@ public class PostController : ControllerBase
 
 
     [HttpGet("getPost")]
-    public async Task<IActionResult> GetPost(string? user_id=null, string? post_title=null, string?post_id=null, int page = 1,int pageSize = 10)
+    public async Task<IActionResult> GetPost(string? current_user = null, 
+                                            string? user_id = null,
+                                            string? post_title = null,
+                                            string? post_id = null,
+                                            int page = 1,
+                                            int pageSize = 10)
     {
         try
         {
@@ -33,6 +39,7 @@ public class PostController : ControllerBase
             user_id = user_id.Clean();
             post_id = post_id.Clean();
             post_title = post_title.Clean();
+            current_user = current_user.Clean();
             List<CommentDto> comments = [];
 
             if (!string.IsNullOrEmpty(user_id))
@@ -49,7 +56,7 @@ public class PostController : ControllerBase
             {
                 post_id = post_id.ToUpper();    //ToUpper again after clean() ...
                 query = query.Where(x => x.id == post_id);
-                comments = await _commentService.GetCommentsAsync(post_id);
+                comments = await _commentService.GetCommentsAsync(post_id, current_user);
             }
 
             // Calculate row positions (Supabase Range is inclusive)
@@ -68,7 +75,7 @@ public class PostController : ControllerBase
                 id = p.id,
                 user_id = p.user_id,
                 user_name = p.User.name,
-                avatar_url = p.User.avatar_url,
+                avatar_url = p.community_id.IsNullOrEmpty() ? p.User.avatar_url : p.Community.AvatarUrl,
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
@@ -77,20 +84,18 @@ public class PostController : ControllerBase
                 title = p.title,
                 text = p.text,
                 postImage_url = p.PostImage?
-                                .Select(img => img.image_url)   //access each image object
-                                .ToList() ?? new List<string>(),
+                                .ToDictionary(img => img.image_id, img => img.image_url)
+                                ?? new Dictionary<string, string>(),
 
                 total_comment = p.comment?.Count ?? 0,
-                total_upVote = p.vote?.Count(v => v.IsUpvote && v.CommentId == null) ?? 0,
-                total_downVote = p.vote?.Count(v => !v.IsUpvote && v.CommentId == null) ?? 0,
+                total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
+                total_downVote = p.vote?.Count(v => !v.IsUpvote) ?? 0,
                 self_vote = p.vote?
-                            .Where(v => v.UserId == user_id && v.CommentId == null)
-                            .Select(v => v.IsUpvote)   // cast to nullable bool
+                            .Where(v => v.UserId == current_user)
+                            .Select(v => (bool?)v.IsUpvote)   // cast to nullable bool
                             .FirstOrDefault(),
                 Comment = comments
             });
-
-            
 
             return Ok(dtoData);
         }
@@ -179,7 +184,28 @@ public class PostController : ControllerBase
                 .From<Post>()
                 .Where(p => p.id == post_id)
                 .Update(dtoData);
+            /*
+            if (editedPost.image != null && editedPost.image.Length > 0)
+            {
+                int i = 0;
+                foreach (var file in editedPost.image)
+                {
+                    if (file.Length > 0)
+                    {
+                        string url = await UploadFile.UploadFileAsync(file, "PostImage", _supabase);
 
+                        var dtoData_postImage = new PostImage
+                        {
+                            image_id = dtoData_post.id + "IMG" + i++,
+                            post_id = dtoData_post.id,
+                            image_url = url,
+                        };
+
+                        await _supabase.From<PostImage>().Insert(dtoData_postImage);
+                    }
+                }
+            }
+            */
             return Ok(dtoData.id);
         }
         catch (Exception ex)
@@ -207,12 +233,11 @@ public class PostController : ControllerBase
         }
     }
 
-    [HttpPost("editPost/{post_id}")]
+    [HttpPost("banPost/{post_id}")]
     public async Task<IActionResult> BanPost(string post_id, [FromForm] PostEditDto editedPost)
     {
         try
         {
-
             return Ok();
         }
         catch (Exception ex)
