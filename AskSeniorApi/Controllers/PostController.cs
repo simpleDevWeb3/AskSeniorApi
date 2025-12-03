@@ -156,56 +156,62 @@ public class PostController : ControllerBase
         }
     }
     
-    [HttpPost("editPost/{post_id}")]
+    [HttpPut("editPost/{post_id}")]
     public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEditDto editedPost)
     {
         var posts = await _supabase
-            .From<Post>()
+            .From<PostEdit>()
+            //.Select("*, postImage(*)")
             .Where(p => p.id == post_id)
             .Get();
 
-        if (posts.Models.Count <= 0) return NotFound();
+        if (posts.Models.Count <= 0) return NotFound("no record matched");
         var post = posts.Models.FirstOrDefault();
 
         try
         {
-            var dtoData = new Post
+            var dtoData = new PostEdit
             {
                 id = post.id,
                 user_id = post.user_id,
                 created_at = post.created_at,
-                topic_id = editedPost.topic_id ?? post.topic_id,
-                community_id = editedPost.community_id ?? post.community_id,
-                title = editedPost.title ?? post.title,
-                text = editedPost.text ?? post.text
+
+                topic_id = editedPost.topic_id.Clean() ?? post.topic_id,
+                community_id = editedPost.community_id.Clean() ?? post.community_id,
+                title = editedPost.title.Clean() ?? post.title,
+                text = editedPost.text.Clean() ?? post.text
             };
 
             var response = await _supabase
-                .From<Post>()
+                .From<PostEdit>()
                 .Where(p => p.id == post_id)
                 .Update(dtoData);
             /*
-            if (editedPost.image != null && editedPost.image.Length > 0)
+            if (editedPost.new_image != null && editedPost.new_image.Length > 0)
             {
-                int i = 0;
-                foreach (var file in editedPost.image)
+                if (post.PostImage.Count <= 0) return Ok(dtoData + "no image can be edited");
+
+                for (int i = 0; i < editedPost.new_image.Count(); i++)//var file in editedPost.new_image)
                 {
+                    var original_image_id = editedPost.original_image_id[i];
+                    var file = editedPost.new_image[i];
+
                     if (file.Length > 0)
                     {
                         string url = await UploadFile.UploadFileAsync(file, "PostImage", _supabase);
-
                         var dtoData_postImage = new PostImage
                         {
-                            image_id = dtoData_post.id + "IMG" + i++,
-                            post_id = dtoData_post.id,
                             image_url = url,
                         };
 
-                        await _supabase.From<PostImage>().Insert(dtoData_postImage);
+                        await _supabase
+                            .From<PostImage>()
+                            .Where(pi => pi.image_id == original_image_id)
+                            .Update(dtoData_postImage);
                     }
                 }
-            }
-            */
+            }*/
+            
             return Ok(dtoData.id);
         }
         catch (Exception ex)

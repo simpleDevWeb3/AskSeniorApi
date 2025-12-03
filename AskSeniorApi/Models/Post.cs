@@ -26,7 +26,6 @@ public class Post: BaseModel
     public List<Comment>? comment { get; set; }
     public List<Vote>? vote { get; set; }
 
-
     [Reference(typeof(User), ReferenceAttribute.JoinType.Left)]
     public User User { get; set; }
 
@@ -38,6 +37,29 @@ public class Post: BaseModel
 
     [Reference(typeof(Community), ReferenceAttribute.JoinType.Left)]
     public Community? Community{ get; set; }
+}
+
+[Table("post")]
+public class PostEdit : BaseModel
+{
+    [PrimaryKey("id", false)]
+    [Column("id")]
+    public string id { get; set; }
+    [Column("op_id")]
+    public string user_id { get; set; }
+    [Column("topic_id")]
+    public string topic_id { get; set; }
+    [Column("community_id")]
+    public string? community_id { get; set; }
+    [Column("created_at")]
+    public DateTime created_at { get; set; }
+    [Column("title")]
+    public string title { get; set; }
+    [Column("text")]
+    public string text { get; set; }
+
+    //[Reference(typeof(PostImage), ReferenceAttribute.JoinType.Left)]
+    //public List<PostImage> PostImage { get; set; }
 }
 
 

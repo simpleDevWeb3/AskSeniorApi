@@ -3,7 +3,6 @@ using Supabase.Postgrest.Models;
 namespace AskSeniorApi.Models;
 
 [Table("comment")]
-
 public class Comment : BaseModel
 {
     [PrimaryKey("comment_id")]
@@ -32,7 +31,6 @@ public class Comment : BaseModel
 }
 
 [Table("comment")]
-
 public class CommentRespone : BaseModel
 {
     [PrimaryKey("comment_id")]

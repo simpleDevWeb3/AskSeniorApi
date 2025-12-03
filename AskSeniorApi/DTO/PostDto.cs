@@ -49,12 +49,6 @@ public class PostEditDto
     public string? title { get; set; }
     public string? text { get; set; }
 
-    public List<string>? image_id { get; set; }
+    public List<string>? original_image_id { get; set; }
     public IFormFile[]? new_image { get; set; }
-}
-
-public class ImageUpdate
-{
-    public string old_url { get; set; }
-    public IFormFile new_image { get; set; }
 }
