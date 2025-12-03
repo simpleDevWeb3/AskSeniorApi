@@ -4,6 +4,7 @@ using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Supabase;
 using static Supabase.Postgrest.Constants;
 namespace AskSeniorApi.Controllers;
@@ -38,6 +39,7 @@ public class PostController : ControllerBase
             user_id = user_id.Clean();
             post_id = post_id.Clean();
             post_title = post_title.Clean();
+            current_user = current_user.Clean();
             List<CommentDto> comments = [];
 
             if (!string.IsNullOrEmpty(user_id))
@@ -73,7 +75,7 @@ public class PostController : ControllerBase
                 id = p.id,
                 user_id = p.user_id,
                 user_name = p.User.name,
-                avatar_url = p.User.avatar_url,
+                avatar_url = p.community_id.IsNullOrEmpty() ? "debug: empty" : "debug: not empty",
                 topic_id = p.topic_id,
                 topic_name = p.Topic.name,
                 community_id = p.community_id,
@@ -89,7 +91,7 @@ public class PostController : ControllerBase
                 total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
                 total_downVote = p.vote?.Count(v => !v.IsUpvote) ?? 0,
                 self_vote = p.vote?
-                            .Where(v => v.UserId == current_user && v.CommentId == null)
+                            .Where(v => v.UserId == current_user)
                             .Select(v => (bool?)v.IsUpvote)   // cast to nullable bool
                             .FirstOrDefault(),
                 Comment = comments

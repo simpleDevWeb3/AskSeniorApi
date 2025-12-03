@@ -269,8 +269,13 @@ public class CommunityController : ControllerBase
 
                     topics = topicRecords.Models.Select(t => new TopicDto
                     {
+<<<<<<< HEAD
                         Id = t.id,
                         Name = t.name
+=======
+                        //Id = t.Id,
+                        // = t.Name
+>>>>>>> 61c421dd068f16348840651c1569ccb9863418a3
                     }).ToList();
                 }
 
