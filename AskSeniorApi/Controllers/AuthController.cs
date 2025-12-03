@@ -362,11 +362,11 @@ public class AuthController : ControllerBase
             {
                 id = user.id,
                 created_at = user.created_at,
-                name = req.name.Clean() ?? user.name,
+                name = req.name ?? user.name,
                 avatar_url = avatar_url ?? user.avatar_url,
                 banner_url = banner_url ?? user.banner_url,
-                email = user.email,
-                bio = user.bio
+                email = req.Email ?? user.email,
+                bio = req.bio ?? user.bio
             };
 
             var response = await _supabase
