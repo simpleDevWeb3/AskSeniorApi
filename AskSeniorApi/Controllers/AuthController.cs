@@ -253,7 +253,7 @@ public class AuthController : ControllerBase
                 banner_url = profile.banner_url,
                 bio = profile.bio,
                 email = profile.email,
-                created_at = profile.created_at
+                created_at = profile.created_at,
             };
 
             return Ok(new
