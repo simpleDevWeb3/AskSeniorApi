@@ -420,4 +420,40 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpGet("getAllUser")]
+    public async Task<IActionResult> getAllUser(string? user_id = null)
+    {
+        user_id = user_id.Clean();
+        var query = _supabase.From<User>().Select("*");
+
+        try 
+        {
+            if (!user_id.IsNullOrEmpty())
+            {
+                query = query.Where(x => x.id ==  user_id);
+            }
+
+            var user = await query.Get();
+
+            var dtoData = user.Models.Select(u => new UserDto
+            {
+                id = u.id,
+                created_at = u.created_at,
+                name = u.name,
+                avatar_url = u.avatar_url,
+                banner_url = u.banner_url,
+                email = u.email,
+                bio = u.bio,
+                is_banned = u.is_banned,
+            }).ToList();
+
+            return Ok(dtoData);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
 }
