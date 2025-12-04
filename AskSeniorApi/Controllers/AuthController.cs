@@ -11,6 +11,7 @@ using Supabase;
 using System.IdentityModel.Tokens.Jwt;
 using static AskSeniorApi.Models.Auth;
 using static Supabase.Postgrest.Constants;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using AuthClient = Supabase.Gotrue;
 namespace AskSeniorApi.Controllers;
 
@@ -54,7 +55,8 @@ public class AuthController : ControllerBase
                     banner_url = bannerUrl,
                     bio = req.bio,
                     email = res.User.Email,
-                    created_at = DateTime.UtcNow
+                    created_at = DateTime.UtcNow,
+                    is_banned = false,
                 };
 
                 var insertRes = await _supabase.From<User>().Insert(dtoData);
@@ -129,7 +131,8 @@ public class AuthController : ControllerBase
                 banner_url = profile.banner_url,
                 bio = profile.bio,
                 email = profile.email,
-                created_at = profile.created_at
+                created_at = profile.created_at,
+              
             };
 
             return Ok(new
@@ -266,7 +269,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("checkDuplicateEmail")]
-    public async Task<IActionResult> CheckDuplicateEmail(String email)
+    public async Task<IActionResult> CheckDuplicateEmail(string email)
     {
         try
         {
@@ -289,7 +292,7 @@ public class AuthController : ControllerBase
 
 
     [HttpGet("checkDuplicateUsername")]
-    public async Task<IActionResult> CheckDuplicateUsername(String username)
+    public async Task<IActionResult> CheckDuplicateUsername(string username)
     {
         try
         {

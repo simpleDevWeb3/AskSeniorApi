@@ -10,6 +10,8 @@ public class UserDto
     public string? banner_url { get; set; }
     public string? email { get; set; }
     public string? bio { get; set; }
+
+    public bool is_banned { get; set; }
 }
 
 public class UserEditDto
