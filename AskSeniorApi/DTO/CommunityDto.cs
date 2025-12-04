@@ -3,6 +3,17 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AskSeniorApi.DTOs
 {
+    public class BanCommunityRequest
+    {
+        // the user (requester) performing the ban
+        public Guid RequesterUserId { get; set; }
+
+        // the community to ban
+        public string CommunityId { get; set; } = string.Empty;
+
+        // optional reason
+        public string? Reason { get; set; }
+    }
     public class CreateCommunityRequestJson
     {
         [Required]

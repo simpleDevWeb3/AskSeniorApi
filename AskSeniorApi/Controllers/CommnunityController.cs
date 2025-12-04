@@ -4,6 +4,7 @@ using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
 using Supabase;
+using static Supabase.Postgrest.Constants;
 
 namespace AskSeniorApi.Controllers;
 
@@ -31,17 +32,34 @@ public class CommunityController : ControllerBase
             var adminCheck = await _client
                 .From<User>()
                 .Select("*")
-                .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, req.AdminId.ToString())
+                .Filter("id", Operator.Equals, req.AdminId.ToString())
                 .Single();
 
             if (adminCheck == null)
                 return BadRequest(new { error = "AdminId does not exist in users table." });
 
-            // 2. Auto-generate Community ID using UNIX format
+
+            // 2. Validate UNIQUE community name
+            var nameCheck = await _client
+                .From<Community>()
+                .Select("id")
+                .Filter("name", Operator.Equals, req.Name.Trim())
+                .Get();
+
+            if (nameCheck.Models.Count > 0)
+            {
+                return BadRequest(new
+                {
+                    error = "A community with this name already exists. Please choose a different name."
+                });
+            }
+
+
+            // 3. Auto-generate Community ID using UNIX format
             long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             string communityId = "C" + unix;
 
-            // 3. Upload files
+            // 4. Upload files
             string? bannerUrl = null;
             string? avatarUrl = null;
 
@@ -51,7 +69,8 @@ public class CommunityController : ControllerBase
             if (req.AvatarFile != null)
                 avatarUrl = await UploadFile.UploadFileAsync(req.AvatarFile, "Avatar", _client);
 
-            // 4. Insert Community
+
+            // 5. Insert Community
             var newCommunity = new Community
             {
                 Id = communityId,
@@ -69,7 +88,8 @@ public class CommunityController : ControllerBase
             if (created == null)
                 return BadRequest(new { error = "Failed to create community." });
 
-            // 5. Insert related CommunityTopic rows
+
+            // 6. Insert Related Topics
             foreach (var topicId in req.TopicIds.Distinct())
             {
                 var ct = new CommunityTopic
@@ -82,8 +102,7 @@ public class CommunityController : ControllerBase
                 await _client.From<CommunityTopic>().Insert(ct);
             }
 
-
-            // 6. Automatically join creator to the community
+            // 7. Auto-join creator
             var newMember = new Member
             {
                 user_id = req.AdminId.ToString(),
@@ -105,6 +124,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 
@@ -449,7 +469,7 @@ public class CommunityController : ControllerBase
         }
     }
 
-    [HttpDelete("admin kick members")]
+    [HttpDelete("group admin kick members")]
     public async Task<IActionResult> KickMember([FromQuery] string adminId, [FromQuery] string userId, [FromQuery] string communityId)
     {
         if (string.IsNullOrWhiteSpace(adminId) ||
@@ -566,6 +586,69 @@ public class CommunityController : ControllerBase
         }
     }
 
+    [HttpGet("user-unjoined-communities")]
+    public async Task<IActionResult> GetUserUnjoinedCommunities([FromQuery] string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return BadRequest(new { error = "UserId is required." });
+
+        try
+        {
+            // 1. Get memberships
+            var membershipsResp = await _client
+                .From<Member>()
+                .Filter("user_id", Operator.Equals, userId)
+                .Get();
+
+            var joinedCommunityIds = membershipsResp.Models
+                .Select(m => m.community_id)
+                .ToList();
+
+            // 2. Start the community query
+            var query = _client.From<Community>();
+
+            // 3. Exclude joined communities manually using chained !=
+            foreach (var id in joinedCommunityIds)
+            {
+                query = (Supabase.Interfaces.ISupabaseTable<Community, Supabase.Realtime.RealtimeChannel>)query.Where(c => c.Id != id);
+            }
+
+            // 4. Also exclude banned communities
+            query = (Supabase.Interfaces.ISupabaseTable<Community, Supabase.Realtime.RealtimeChannel>)query.Where(c => c.IsBanned == false);
+
+            // 5. Execute
+            var communitiesResp = await query.Get();
+            var communities = communitiesResp.Models;
+
+            // 6. Format response
+            var result = communities.Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                description = c.Description,
+                banner_url = c.BannerUrl,
+                avatar_url = c.AvatarUrl,
+                admin_id = c.AdminId,
+                created_at = c.CreatedAt,
+                is_banned = c.IsBanned
+            }).ToList();
+
+            return Ok(new
+            {
+                userId,
+                count = result.Count,
+                communities = result
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
+
+
 
 
 
@@ -625,7 +708,6 @@ public class CommunityController : ControllerBase
         }
     }
 
-
     [HttpPatch("ban")]
     public async Task<IActionResult> BanCommunity([FromQuery] string communityId, [FromQuery] Guid adminId)
     {
@@ -634,36 +716,73 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // 1. Get community
-            var result = await _client
-     .From<Community>()
-     .Where(c => c.Id == communityId)
-     .Get(); // Use Get() instead of Single()
+            // ===========================================
+            // 1. VALIDATE APP ADMIN
+            // ===========================================
+            var userResult = await _client
+                .From<User>()
+                .Filter("id", Operator.Equals, adminId.ToString())
+                .Get();
 
-            var community = result.Models.FirstOrDefault();
+            var user = userResult.Models.FirstOrDefault();
+
+            if (user == null)
+                return BadRequest(new { error = "Admin user not found." });
+
+            if (user.role?.Trim().ToLower() != "admin")
+                return BadRequest(new { error = "Only app admins can ban communities." });
+
+            // ===========================================
+            // 2. FETCH COMMUNITY
+            // ===========================================
+            var communityResult = await _client
+                .From<Community>()
+                .Filter("id", Operator.Equals, communityId)
+                .Get();
+
+            var community = communityResult.Models.FirstOrDefault();
+
             if (community == null)
                 return BadRequest(new { error = "Community not found." });
 
-
-            
-            // 2. Only the admin of the community can ban it
-            if (community.AdminId != adminId)
-                return BadRequest(new { error = "Only the community admin can ban this community." });
-
-            // 3. If already banned, skip
+            // ===========================================
+            // 3. CHECK ALREADY BANNED
+            // ===========================================
             if (community.IsBanned == true)
                 return BadRequest(new { error = "Community is already banned." });
 
-            // 4. Update is_banned = true
+            // ===========================================
+            // 4. SET is_banned = TRUE
+            // ===========================================
             community.IsBanned = true;
 
             await _client
                 .From<Community>()
+                .Filter("id", Operator.Equals, community.Id)
                 .Update(community);
+
+            // ===========================================
+            // 5. INSERT BAN RECORD
+            // ===========================================
+
+            long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            string banId = $"BAN{unix}C";  // C = Community
+            var banRecord = new Banned
+            {
+                id = banId,
+                community_id = communityId,
+                user_id = adminId.ToString(),
+                reason = "Banned by app admin",
+                created_at = DateTime.UtcNow
+            };
+
+            await _client
+                .From<Banned>()
+                .Insert(banRecord);
 
             return Ok(new
             {
-                message = "Community has been banned successfully.",
+                message = "Community banned successfully.",
                 communityId = communityId
             });
         }
@@ -672,6 +791,15 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+
+
+
+
+
+
+
+
 
     [HttpPatch("unban")]
     public async Task<IActionResult> UnbanCommunity([FromQuery] string communityId)

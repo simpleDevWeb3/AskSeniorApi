@@ -26,6 +26,9 @@ public class User : BaseModel
     [Column("email")]
     public string? email { get; set; }
 
+    [Column("role")]
+    public string? role { get; set; }
+
     [Column("bio")]
     public string? bio { get; set; }
 
