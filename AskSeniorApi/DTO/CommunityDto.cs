@@ -22,13 +22,13 @@ namespace AskSeniorApi.DTOs
     }
     public class CreateCommunityRequest
     {
-        [Required(ErrorMessage = "AdminId is required")]
+        [Required(ErrorMessage = "AdminId is required.")]
         public Guid AdminId { get; set; }
 
-        [Required(ErrorMessage = "Name is required")]
+        [Required(ErrorMessage = "Name is required.")]
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Description is required")]
+        [Required(ErrorMessage = "Description is required.")]
         public string Description { get; set; } = string.Empty;
 
         [FromForm(Name = "bannerFile")]
@@ -37,8 +37,11 @@ namespace AskSeniorApi.DTOs
         [FromForm(Name = "avatarFile")]
         public IFormFile? AvatarFile { get; set; }
 
-        public List<string>? TopicIds { get; set; }
+        [Required(ErrorMessage = "TopicIds is required and cannot be empty.")]
+        [MinLength(1, ErrorMessage = "You must include at least one topic.")]
+        public List<string> TopicIds { get; set; } = new();
     }
+
 
     public class CreateCommunityDto
     {

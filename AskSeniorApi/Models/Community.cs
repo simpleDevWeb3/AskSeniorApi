@@ -13,7 +13,7 @@ public class Community : BaseModel
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
 
-    [Column("admin_Id")]   // <-- match database exactly
+    [Column("admin_Id")]   // must match EXACT db column
     public Guid? AdminId { get; set; }
 
     [Column("name")]
@@ -27,4 +27,7 @@ public class Community : BaseModel
 
     [Column("avatar_url")]
     public string? AvatarUrl { get; set; }
+
+    [Column("is_banned")]
+    public bool IsBanned { get; set; } = false;   // default = false
 }

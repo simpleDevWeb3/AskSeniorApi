@@ -70,28 +70,26 @@ public class CommunityController : ControllerBase
                 return BadRequest(new { error = "Failed to create community." });
 
             // 5. Insert related CommunityTopic rows
-            if (req.TopicIds != null && req.TopicIds.Any())
+            foreach (var topicId in req.TopicIds.Distinct())
             {
-                var uniqueTopicIds = req.TopicIds.Distinct();
-                foreach (var topicId in uniqueTopicIds)
+                var ct = new CommunityTopic
                 {
-                    var ct = new CommunityTopic
-                    {
-                        TopicId = topicId,
-                        CommunityId = communityId,
-                        CreatedAt = DateTime.UtcNow
-                    };
+                    TopicId = topicId,
+                    CommunityId = communityId,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-                    await _client.From<CommunityTopic>().Insert(ct);
-                }
+                await _client.From<CommunityTopic>().Insert(ct);
             }
+
 
             // 6. Automatically join creator to the community
             var newMember = new Member
             {
                 user_id = req.AdminId.ToString(),
                 community_id = communityId,
-                created_at = DateTime.UtcNow
+                created_at = DateTime.UtcNow,
+                status = "joined"
             };
 
             await _client.From<Member>().Insert(newMember);
@@ -404,7 +402,8 @@ public class CommunityController : ControllerBase
             {
                 user_id = userId,
                 community_id = communityId,
-                created_at = DateTime.UtcNow
+                created_at = DateTime.UtcNow,
+                status = "joined"
             };
 
             await _client.From<Member>().Insert(newMember);
@@ -414,6 +413,7 @@ public class CommunityController : ControllerBase
                 message = "User successfully joined the community.",
                 userId,
                 communityId
+             
             });
         }
         catch (Exception ex)
@@ -421,6 +421,43 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpDelete("leave")]
+    public async Task<IActionResult> LeaveCommunity([FromQuery] string userId, [FromQuery] string communityId)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(communityId))
+            return BadRequest(new { error = "UserId and CommunityId are required." });
+
+        try
+        {
+            // Delete membership using composite key
+            await _client
+                .From<Member>()
+                .Where(m => m.user_id == userId && m.community_id == communityId)
+                .Delete();
+
+            return Ok(new
+            {
+                message = "User has successfully left the community.",
+                userId,
+                communityId
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
+
+
+
+
+
+
+
+
 
 
 
