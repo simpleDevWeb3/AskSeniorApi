@@ -73,7 +73,8 @@ public class PostController : ControllerBase
             int to = (page * pageSize) - 1;      // 9 for page 1
 
             var post = await query
-                 .Where(p => p.is_banned == false /*&& p.Community.is_banned == false*/)
+                 .Where(p => p.is_banned == false)
+                 .Where(p => p.community_id == null || p.Community.IsBanned == false)
                  .Order("created_at", Ordering.Descending)
                  .Range(from, to)
                  .Get();
@@ -118,6 +119,7 @@ public class PostController : ControllerBase
 
 
     [HttpPost("createPost")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> CreatePost([FromForm] PostCreateDto newPost)
     {
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
@@ -172,6 +174,7 @@ public class PostController : ControllerBase
 
 
     [HttpPut("editPost/{post_id}")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> EditPost(string post_id, [FromForm] PostEditDto editedPost)
     {
         var posts = await _supabase
