@@ -31,6 +31,7 @@ public class PostController : ControllerBase
     string? user_id = null,
     string? post_title = null,
     string? post_id = null,
+    string? community_id = null,
     int page = 1,
     int pageSize = 10)
     {
@@ -43,6 +44,7 @@ public class PostController : ControllerBase
             post_id = post_id.Clean();
             post_title = post_title.Clean();
             current_user = current_user.Clean();
+            community_id = community_id.Clean();
             List<CommentDto> comments = [];
 
             if (!string.IsNullOrEmpty(user_id))
@@ -57,9 +59,13 @@ public class PostController : ControllerBase
 
             if (!string.IsNullOrEmpty(post_id))
             {
-                post_id = post_id.ToUpper();    //ToUpper again after clean() ...
                 query = query.Where(x => x.id == post_id);
                 comments = await _commentService.GetCommentsAsync(post_id, current_user);
+            }
+
+            if (!string.IsNullOrEmpty(community_id))
+            {
+                query = query.Where(x => x.community_id == community_id);
             }
 
             // Calculate row positions (Supabase Range is inclusive)
@@ -67,7 +73,7 @@ public class PostController : ControllerBase
             int to = (page * pageSize) - 1;      // 9 for page 1
 
             var post = await query
-                 .Where(p => p.is_banned == false)
+                 .Where(p => p.is_banned == false /*&& p.Community.is_banned == false*/)
                  .Order("created_at", Ordering.Descending)
                  .Range(from, to)
                  .Get();
