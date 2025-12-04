@@ -31,4 +31,6 @@ public class User : BaseModel
 
     [Column("is_banned")]
     public bool? is_banned { get; set; }
+    [Column("role")]
+    public string role { get; set; }
 }

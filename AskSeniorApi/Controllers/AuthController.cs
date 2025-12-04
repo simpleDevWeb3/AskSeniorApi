@@ -57,6 +57,7 @@ public class AuthController : ControllerBase
                     email = res.User.Email,
                     created_at = DateTime.UtcNow,
                     is_banned = false,
+                    role = "member",
                 };
 
                 var insertRes = await _supabase.From<User>().Insert(dtoData);
@@ -132,7 +133,7 @@ public class AuthController : ControllerBase
                 bio = profile.bio,
                 email = profile.email,
                 created_at = profile.created_at,
-              
+                role = profile.role,
             };
 
             return Ok(new
@@ -254,6 +255,7 @@ public class AuthController : ControllerBase
                 bio = profile.bio,
                 email = profile.email,
                 created_at = profile.created_at,
+                role = profile.role,
             };
 
             return Ok(new
@@ -366,7 +368,8 @@ public class AuthController : ControllerBase
                 avatar_url = avatar_url ?? user.avatar_url,
                 banner_url = banner_url ?? user.banner_url,
                 email = user.email,
-                bio = req.bio ?? user.bio
+                bio = req.bio ?? user.bio,
+                role = user.role,
             };
 
             var response = await _supabase
@@ -446,6 +449,7 @@ public class AuthController : ControllerBase
                 email = u.email,
                 bio = u.bio,
                 is_banned = u.is_banned,
+                role = u.role,
             }).ToList();
 
             return Ok(dtoData);
