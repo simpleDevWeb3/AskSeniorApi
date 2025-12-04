@@ -449,13 +449,299 @@ public class CommunityController : ControllerBase
         }
     }
 
+    [HttpDelete("admin kick members")]
+    public async Task<IActionResult> KickMember([FromQuery] string adminId, [FromQuery] string userId, [FromQuery] string communityId)
+    {
+        if (string.IsNullOrWhiteSpace(adminId) ||
+            string.IsNullOrWhiteSpace(userId) ||
+            string.IsNullOrWhiteSpace(communityId))
+        {
+            return BadRequest(new { error = "AdminId, UserId, and CommunityId are required." });
+        }
+
+        try
+        {
+            // 1. Validate community exists
+            var community = await _client
+                .From<Community>()
+                .Where(c => c.Id == communityId)
+                .Single();
+
+            if (community == null)
+                return BadRequest(new { error = "Community does not exist." });
+
+            // 2. Ensure caller is the admin
+            if (community.AdminId?.ToString() != adminId)
+                return Unauthorized(new { error = "Only the community admin can remove members." });
+
+            // 3. Ensure the user is actually in the community
+            var membership = await _client
+                .From<Member>()
+                .Where(m => m.user_id == userId && m.community_id == communityId)
+                .Single();
+
+            if (membership == null)
+                return BadRequest(new { error = "User is not a member of this community." });
+
+            // 4. Prevent admin from kicking themselves
+            if (userId == adminId)
+                return BadRequest(new { error = "Admin cannot remove themselves from their own community." });
+
+            // 5. Delete membership
+            await _client
+                .From<Member>()
+                .Where(m => m.user_id == userId && m.community_id == communityId)
+                .Delete();
+
+            return Ok(new
+            {
+                message = "User has been removed from the community.",
+                removedUserId = userId,
+                communityId
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
+    [HttpGet("getCommunityMembers")]
+    public async Task<IActionResult> GetMembersByCommunity([FromQuery] string communityId)
+    {
+        if (string.IsNullOrWhiteSpace(communityId))
+            return BadRequest(new { error = "communityId is required." });
+
+        try
+        {
+            var memberResp = await _client
+                .From<Member>()
+                .Filter("community_id", Supabase.Postgrest.Constants.Operator.Equals, communityId)
+                .Get();
+
+            var members = memberResp.Models;
+
+            if (!members.Any())
+                return Ok(new { message = "No members in this community yet.", members = new List<object>() });
+
+            var userIds = members.Select(m => m.user_id).ToList();
+
+            var userResp = await _client
+                .From<User>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, userIds)
+                .Get();
+
+            var users = userResp.Models;
+
+            var result = members.Select(m =>
+            {
+                var user = users.FirstOrDefault(u => u.id.ToString() == m.user_id);
+
+                // map only the fields we want in DTO
+                return new
+                {
+                    user_id = m.user_id,
+                    community_id = m.community_id,
+                    created_at = m.created_at,
+                    status = m.status,
+                    user = user != null ? new
+                    {
+                        id = user.id.ToString(),
+                        created_at = user.created_at,
+                        name = user.name,
+                        avatar_url = user.avatar_url,
+                        banner_url = user.banner_url,
+                        email = user.email,
+                        bio = user.bio
+                    } : null
+                };
+            }).ToList();
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 
 
 
 
 
 
+    [HttpGet("user communities")]
+    public async Task<IActionResult> GetUserCommunities([FromQuery] string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return BadRequest(new { error = "UserId is required." });
 
+        try
+        {
+            // 1. Get memberships for this user
+            var memberships = await _client
+                .From<Member>()
+                .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId)
+                .Get();
+
+            if (!memberships.Models.Any())
+                return Ok(new { message = "User has not joined any communities.", communities = new List<object>() });
+
+            // 2. Extract community IDs
+            var communityIds = memberships.Models.Select(m => m.community_id).ToList();
+
+            // 3. Fetch communities using the IDs
+            var communityResp = await _client
+                .From<Community>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, communityIds)
+                .Get();
+
+            var communities = communityResp.Models;
+
+            // 4. Map to DTO/anonymous object to avoid serialization issues
+            var result = communities.Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                description = c.Description,
+                banner_url = c.BannerUrl,
+                avatar_url = c.AvatarUrl,
+                admin_id = c.AdminId,
+                created_at = c.CreatedAt,
+                is_banned = c.IsBanned
+            }).ToList();
+
+            return Ok(new
+            {
+                userId,
+                count = result.Count,
+                communities = result
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
+    [HttpPatch("ban")]
+    public async Task<IActionResult> BanCommunity([FromQuery] string communityId, [FromQuery] Guid adminId)
+    {
+        if (string.IsNullOrWhiteSpace(communityId))
+            return BadRequest(new { error = "CommunityId is required." });
+
+        try
+        {
+            // 1. Get community
+            var result = await _client
+     .From<Community>()
+     .Where(c => c.Id == communityId)
+     .Get(); // Use Get() instead of Single()
+
+            var community = result.Models.FirstOrDefault();
+            if (community == null)
+                return BadRequest(new { error = "Community not found." });
+
+
+            
+            // 2. Only the admin of the community can ban it
+            if (community.AdminId != adminId)
+                return BadRequest(new { error = "Only the community admin can ban this community." });
+
+            // 3. If already banned, skip
+            if (community.IsBanned == true)
+                return BadRequest(new { error = "Community is already banned." });
+
+            // 4. Update is_banned = true
+            community.IsBanned = true;
+
+            await _client
+                .From<Community>()
+                .Update(community);
+
+            return Ok(new
+            {
+                message = "Community has been banned successfully.",
+                communityId = communityId
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPatch("unban")]
+    public async Task<IActionResult> UnbanCommunity([FromQuery] string communityId)
+    {
+        if (string.IsNullOrWhiteSpace(communityId))
+            return BadRequest(new { error = "CommunityId is required." });
+
+        try
+        {
+            // Check community exists
+            var community = await _client
+                .From<Community>()
+                .Where(c => c.Id == communityId)
+                .Single();
+
+            if (community == null)
+                return BadRequest(new { error = "Community does not exist." });
+
+            // Update is_banned = false
+            community.IsBanned = false;
+
+            await _client.From<Community>().Update(community);
+
+            return Ok(new
+            {
+                message = "Community has been unbanned successfully.",
+                communityId
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("get not banned communities")]
+    public async Task<IActionResult> GetUnbannedCommunities()
+    {
+        try
+        {
+            var result = await _client
+                .From<Community>()
+                .Filter("is_banned", Supabase.Postgrest.Constants.Operator.Equals, false)
+                .Get();
+
+            return Ok(result.Models);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("get banned communities")]
+    public async Task<IActionResult> GetbannedCommunities()
+    {
+        try
+        {
+            var result = await _client
+                .From<Community>()
+                .Filter("is_banned", Supabase.Postgrest.Constants.Operator.Equals, true)
+                .Get();
+
+            return Ok(result.Models);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 
 
 
