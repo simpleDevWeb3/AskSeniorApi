@@ -4,6 +4,7 @@ using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
 using Supabase;
+using System.Linq;
 using static Supabase.Postgrest.Constants;
 
 namespace AskSeniorApi.Controllers;
@@ -274,41 +275,45 @@ public class CommunityController : ControllerBase
 
 
 
-    [HttpGet("getAll/{userId}")]
-    public async Task<IActionResult> GetAllCommunities(string userId)
+    [HttpGet("getAll")]
+    public async Task<IActionResult> GetAllCommunities([FromQuery] string? userId)
+
     {
         try
         {
-            // 1. Get ALL communities where is_banned = false
+            // 1. Get ALL non-banned communities
             var communities = await _client
                 .From<Community>()
-                .Filter("is_banned", Operator.Equals, "false")   // IMPORTANT: use string, not bool
+                .Filter("is_banned", Operator.Equals, "false")
                 .Get();
 
-            // 2. Get all community IDs the user has joined
-            var joinedRecords = await _client
-                .From<Member>()
-                .Where(cm => cm.user_id == userId)
-                .Get();
+            // 2. If userId is empty → return IsJoined = false for all
+            HashSet<string> joinedCommunityIds = new HashSet<string>();
 
-            var joinedCommunityIds = joinedRecords.Models
-                .Select(cm => cm.community_id)
-                .ToHashSet();  // Fast lookup
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var joinedRecords = await _client
+                    .From<Member>()
+                    .Where(m => m.user_id == userId)
+                    .Get();
+
+                joinedCommunityIds = joinedRecords.Models
+                    .Select(m => m.community_id) // string
+                    .ToHashSet();
+            }
 
             var dtoList = new List<CommunityWithJoinStatusDto>();
 
             foreach (var c in communities.Models)
             {
-                // 3. Get topic mapping for this community
+                // 3. Get topic mappings
                 var communityTopics = await _client.From<CommunityTopic>()
                     .Where(ct => ct.CommunityId == c.Id)
                     .Get();
 
-                var topicIds = communityTopics.Models
-                    .Select(ct => ct.TopicId)
-                    .ToList();
+                var topicIds = communityTopics.Models.Select(ct => ct.TopicId).ToList();
 
-                // 4. Get topics
+                // 4. Load topics
                 var topics = new List<TopicDto>();
                 if (topicIds.Any())
                 {
@@ -324,18 +329,18 @@ public class CommunityController : ControllerBase
                     }).ToList();
                 }
 
-                // 5. Create DTO
+                // 5. Construct DTO
                 dtoList.Add(new CommunityWithJoinStatusDto
                 {
-                    Id = c.Id,
-                    AdminId = (Guid)c.AdminId,
+                    Id = c.Id,                  // string
+                    AdminId = (Guid)c.AdminId,        // string
                     Name = c.Name,
                     Description = c.Description,
                     BannerUrl = c.BannerUrl,
                     AvatarUrl = c.AvatarUrl,
                     CreatedAt = c.CreatedAt,
                     Topics = topics,
-                    IsJoined = joinedCommunityIds.Contains(c.Id)
+                    IsJoined = joinedCommunityIds.Contains(c.Id)  // string → string
                 });
             }
 
@@ -346,6 +351,10 @@ public class CommunityController : ControllerBase
             return Ok(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
+
+
+
+
 
     [HttpGet("adminCommunities/{adminId}")]
     public async Task<IActionResult> GetAdminCommunities(string adminId)
@@ -404,31 +413,36 @@ public class CommunityController : ControllerBase
 
 
     [HttpGet("getById")]
-    public async Task<IActionResult> GetCommunityById([FromQuery] string id, [FromQuery] string userId)
+    public async Task<IActionResult> GetCommunityById(
+    [FromQuery] string id,
+    [FromQuery] string? userId = null
+)
     {
         if (string.IsNullOrWhiteSpace(id))
             return BadRequest(new { message = "CommunityId is required." });
 
         try
         {
-            // 1. Get the community by ID, only if it's not banned
-            var communityResponse = await _client
+            // 1. Fetch the community (only if not banned)
+            var response = await _client
                 .From<Community>()
                 .Where(c => c.Id == id && c.IsBanned == false)
                 .Single();
 
-            if (communityResponse == null)
+            if (response == null)
                 return NotFound(new { message = "Community not found or it is banned." });
 
-            // 2. Get associated topic IDs
+            // 2. Get topic mappings
             var communityTopics = await _client
                 .From<CommunityTopic>()
                 .Where(ct => ct.CommunityId == id)
                 .Get();
 
-            var topicIds = communityTopics.Models.Select(ct => ct.TopicId).ToList();
+            var topicIds = communityTopics.Models
+                .Select(ct => ct.TopicId)
+                .ToList();
 
-            // 3. Get topic details
+            // 3. Fetch topic details
             var topics = new List<TopicDto>();
             if (topicIds.Any())
             {
@@ -444,8 +458,9 @@ public class CommunityController : ControllerBase
                 }).ToList();
             }
 
-            // 4. Check if the user has joined the community
+            // 4. Determine join status (only if userId present)
             bool isJoined = false;
+
             if (!string.IsNullOrWhiteSpace(userId))
             {
                 var membership = await _client
@@ -456,27 +471,28 @@ public class CommunityController : ControllerBase
                 isJoined = membership.Models.Any();
             }
 
-            // 5. Map to DTO
-            var communityDto = new CommunityWithJoinStatusDto
+            // 5. Build DTO
+            var dto = new CommunityWithJoinStatusDto
             {
-                Id = communityResponse.Id,
-                AdminId = (Guid)communityResponse.AdminId,
-                Name = communityResponse.Name,
-                Description = communityResponse.Description,
-                BannerUrl = communityResponse.BannerUrl,
-                AvatarUrl = communityResponse.AvatarUrl,
-                CreatedAt = communityResponse.CreatedAt,
+                Id = response.Id,
+                AdminId = (Guid)response.AdminId,
+                Name = response.Name,
+                Description = response.Description,
+                BannerUrl = response.BannerUrl,
+                AvatarUrl = response.AvatarUrl,
+                CreatedAt = response.CreatedAt,
                 Topics = topics,
                 IsJoined = isJoined
             };
 
-            return Ok(communityDto);
+            return Ok(dto);
         }
         catch (Exception ex)
         {
             return BadRequest(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
+
 
 
     [HttpPost("join")]
@@ -578,7 +594,20 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // Delete membership using composite key
+            // 1. Fetch the community
+            var communityResp = await _client
+                .From<Community>()
+                .Where(c => c.Id == communityId)
+                .Single();
+
+            if (communityResp == null)
+                return NotFound(new { error = "Community not found." });
+
+            // 2. Prevent admin from leaving their own community
+            if (communityResp.AdminId.ToString() == userId)
+                return BadRequest(new { error = "Admins cannot leave their own community." });
+
+            // 3. Delete membership
             await _client
                 .From<Member>()
                 .Where(m => m.user_id == userId && m.community_id == communityId)
@@ -596,6 +625,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
     [HttpDelete("groupAdminKickMembers")]
     public async Task<IActionResult> KickMember([FromQuery] string adminId, [FromQuery] string userId, [FromQuery] string communityId)
@@ -790,36 +820,70 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // 1. Get all communities
-            var allCommunitiesResp = await _client.From<Community>().Get();
-            var allCommunities = allCommunitiesResp.Models;
-
-            if (!allCommunities.Any())
-                return Ok(new { message = "No communities found.", communities = new List<CommunityWithJoinStatusDto>() });
-
-            // 2. Get all community IDs that the user has joined
+            // 1. Get all memberships for this user
             var joinedRecords = await _client
                 .From<Member>()
                 .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId)
                 .Get();
 
+            if (!joinedRecords.Models.Any())
+                return Ok(new { message = "User has not joined any communities.", communities = new List<CommunityWithJoinStatusDto>() });
+
             var joinedCommunityIds = joinedRecords.Models
                 .Select(m => m.community_id)
-                .ToHashSet(); // For fast lookup
+                .ToList();
 
-            // 3. Map communities to DTO with IsJoined
-            var dtoList = allCommunities.Select(c => new CommunityWithJoinStatusDto
+            // 2. Fetch communities that are not banned
+            var communitiesResp = await _client
+                .From<Community>()
+                .Filter("id", Supabase.Postgrest.Constants.Operator.In, joinedCommunityIds)
+                .Filter("is_banned", Operator.Equals, "false") // Only non-banned communities
+                .Get();
+
+            var communities = communitiesResp.Models;
+
+            var dtoList = new List<CommunityWithJoinStatusDto>();
+
+            foreach (var c in communities)
             {
-                Id = c.Id,
-                AdminId = (Guid)c.AdminId,
-                Name = c.Name,
-                Description = c.Description,
-                BannerUrl = c.BannerUrl,
-                AvatarUrl = c.AvatarUrl,
-                CreatedAt = c.CreatedAt,
-                Topics = new List<TopicDto>(), // Optionally fetch topics like in GetAll
-                IsJoined = joinedCommunityIds.Contains(c.Id)
-            }).ToList();
+                // 3. Get associated topic IDs
+                var communityTopics = await _client
+                    .From<CommunityTopic>()
+                    .Where(ct => ct.CommunityId == c.Id)
+                    .Get();
+
+                var topicIds = communityTopics.Models.Select(ct => ct.TopicId).ToList();
+
+                // 4. Get topic details
+                var topics = new List<TopicDto>();
+                if (topicIds.Any())
+                {
+                    var topicRecords = await _client
+                        .From<Topic>()
+                        .Filter("id", Operator.In, topicIds)
+                        .Get();
+
+                    topics = topicRecords.Models.Select(t => new TopicDto
+                    {
+                        Id = t.id,
+                        Name = t.name
+                    }).ToList();
+                }
+
+                // 5. Map to DTO
+                dtoList.Add(new CommunityWithJoinStatusDto
+                {
+                    Id = c.Id,
+                    AdminId = (Guid)c.AdminId,
+                    Name = c.Name,
+                    Description = c.Description,
+                    BannerUrl = c.BannerUrl,
+                    AvatarUrl = c.AvatarUrl,
+                    CreatedAt = c.CreatedAt,
+                    Topics = topics,
+                    IsJoined = true  // All returned communities are joined
+                });
+            }
 
             return Ok(new
             {
@@ -833,6 +897,8 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+
 
 
 
