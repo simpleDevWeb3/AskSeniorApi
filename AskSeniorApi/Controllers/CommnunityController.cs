@@ -31,27 +31,27 @@ public class CommunityController : ControllerBase
             // 1. Validate Admin Exists
             var adminCheck = await _client
                 .From<User>()
-                .Where(u => u.id == req.AdminId.ToString())
+                .Filter("id", Operator.Equals, req.AdminId.ToString())
                 .Get();
 
             var adminUser = adminCheck.Models.FirstOrDefault();
             if (adminUser == null)
                 return BadRequest(new { error = "AdminId does not exist in users table." });
 
-            // 1a. Check if the admin is banned
-            var bannedRecord = await _client
-            .From<Banned>()
-            .Where(b => b.user_id == req.AdminId.ToString())
-            .Get();
+            // 1a. Validate admin is NOT banned
+            var bannedCheck = await _client
+                .From<Banned>()
+                .Filter("user_id", Operator.Equals, req.AdminId.ToString())
+                .Get();
 
-
-            if (bannedRecord.Models.Any())
+            if (bannedCheck.Models.Any())
                 return BadRequest(new { error = "You are banned and cannot create communities." });
 
-            // 2. Validate UNIQUE community name
+
+            // 2. Validate UNIQUE community name (case-insensitive)
             var nameCheck = await _client
                 .From<Community>()
-                .Where(c => c.Name.Trim().ToLower() == req.Name.Trim().ToLower())
+                .Filter("name", Operator.Equals, req.Name.Trim())
                 .Get();
 
             if (nameCheck.Models.Count > 0)
@@ -62,9 +62,11 @@ public class CommunityController : ControllerBase
                 });
             }
 
-            // 3. Auto-generate Community ID using UNIX format
+
+            // 3. Auto-generate Community ID using UNIX timestamp
             long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             string communityId = "C" + unix;
+
 
             // 4. Upload files
             string? bannerUrl = null;
@@ -76,7 +78,8 @@ public class CommunityController : ControllerBase
             if (req.AvatarFile != null)
                 avatarUrl = await UploadFile.UploadFileAsync(req.AvatarFile, "Avatar", _client);
 
-            // 5. Insert Community
+
+            // 5. Create community
             var newCommunity = new Community
             {
                 Id = communityId,
@@ -94,7 +97,7 @@ public class CommunityController : ControllerBase
             if (created == null)
                 return BadRequest(new { error = "Failed to create community." });
 
-            // 6. Insert Related Topics
+            // 6. Insert related topics
             foreach (var topicId in req.TopicIds.Distinct())
             {
                 var ct = new CommunityTopic
@@ -107,7 +110,7 @@ public class CommunityController : ControllerBase
                 await _client.From<CommunityTopic>().Insert(ct);
             }
 
-            // 7. Auto-join creator
+            // 7. Auto-join the creator
             var newMember = new Member
             {
                 user_id = req.AdminId.ToString(),
@@ -129,6 +132,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 
