@@ -57,7 +57,6 @@ public class AuthController : ControllerBase
                     email = res.User.Email,
                     created_at = DateTime.UtcNow,
                     is_banned = false,
-                    role = "member",
                 };
 
                 var insertRes = await _supabase.From<User>().Insert(dtoData);
@@ -133,7 +132,7 @@ public class AuthController : ControllerBase
                 bio = profile.bio,
                 email = profile.email,
                 created_at = profile.created_at,
-                role = profile.role,
+              
             };
 
             return Ok(new
@@ -254,8 +253,7 @@ public class AuthController : ControllerBase
                 banner_url = profile.banner_url,
                 bio = profile.bio,
                 email = profile.email,
-                created_at = profile.created_at,
-                role = profile.role,
+                created_at = profile.created_at
             };
 
             return Ok(new
@@ -368,8 +366,7 @@ public class AuthController : ControllerBase
                 avatar_url = avatar_url ?? user.avatar_url,
                 banner_url = banner_url ?? user.banner_url,
                 email = user.email,
-                bio = req.bio ?? user.bio,
-                role = user.role,
+                bio = req.bio ?? user.bio
             };
 
             var response = await _supabase
@@ -423,41 +420,4 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
-
-    [HttpGet("getAllUser")]
-    public async Task<IActionResult> getAllUser(string? user_id = null)
-    {
-        user_id = user_id.Clean();
-        var query = _supabase.From<User>().Select("*");
-
-        try 
-        {
-            if (!user_id.IsNullOrEmpty())
-            {
-                query = query.Where(x => x.id ==  user_id);
-            }
-
-            var user = await query.Get();
-
-            var dtoData = user.Models.Select(u => new UserDto
-            {
-                id = u.id,
-                created_at = u.created_at,
-                name = u.name,
-                avatar_url = u.avatar_url,
-                banner_url = u.banner_url,
-                email = u.email,
-                bio = u.bio,
-                is_banned = u.is_banned,
-                role = u.role,
-            }).ToList();
-
-            return Ok(dtoData);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
 }

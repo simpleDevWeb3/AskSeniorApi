@@ -14,6 +14,23 @@ namespace AskSeniorApi.DTOs
         // optional reason
         public string? Reason { get; set; }
     }
+
+    public class CommunityWithJoinStatusDto
+    {
+        public string Id { get; set; }
+        public Guid AdminId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string BannerUrl { get; set; }
+        public string AvatarUrl { get; set; }
+        public DateTime CreatedAt { get; set; }
+
+        public List<TopicDto> Topics { get; set; } = new();
+
+        public bool IsJoined { get; set; }
+    }
+
+
     public class CreateCommunityRequestJson
     {
         [Required]

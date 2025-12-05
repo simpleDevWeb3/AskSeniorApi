@@ -264,32 +264,47 @@ public class CommunityController : ControllerBase
 
 
 
-
-    [HttpGet("getall")]
-    public async Task<IActionResult> GetAllCommunities()
+    [HttpGet("getAll/{userId}")]
+    public async Task<IActionResult> GetAllCommunities(string userId)
     {
         try
         {
-            var communities = await _client.From<Community>().Get();
+            // 1. Get ALL communities where is_banned = false
+            var communities = await _client
+                .From<Community>()
+                .Filter("is_banned", Operator.Equals, "false")   // IMPORTANT: use string, not bool
+                .Get();
 
-            var dtoList = new List<CommunityDto>();
+            // 2. Get all community IDs the user has joined
+            var joinedRecords = await _client
+                .From<Member>()
+                .Where(cm => cm.user_id == userId)
+                .Get();
+
+            var joinedCommunityIds = joinedRecords.Models
+                .Select(cm => cm.community_id)
+                .ToHashSet();  // Fast lookup
+
+            var dtoList = new List<CommunityWithJoinStatusDto>();
 
             foreach (var c in communities.Models)
             {
-                // Get associated topic IDs
+                // 3. Get topic mapping for this community
                 var communityTopics = await _client.From<CommunityTopic>()
                     .Where(ct => ct.CommunityId == c.Id)
                     .Get();
 
-                var topicIds = communityTopics.Models.Select(ct => ct.TopicId).ToList();
+                var topicIds = communityTopics.Models
+                    .Select(ct => ct.TopicId)
+                    .ToList();
 
-                // Get topic details (name) from Topic table
+                // 4. Get topics
                 var topics = new List<TopicDto>();
                 if (topicIds.Any())
                 {
                     var topicRecords = await _client
                         .From<Topic>()
-                        .Filter("id", Supabase.Postgrest.Constants.Operator.In, topicIds)
+                        .Filter("id", Operator.In, topicIds)
                         .Get();
 
                     topics = topicRecords.Models.Select(t => new TopicDto
@@ -299,22 +314,20 @@ public class CommunityController : ControllerBase
                     }).ToList();
                 }
 
-
-                dtoList.Add(new CommunityDto
+                // 5. Create DTO
+                dtoList.Add(new CommunityWithJoinStatusDto
                 {
                     Id = c.Id,
-                    AdminId = c.AdminId,
+                    AdminId = (Guid)c.AdminId,
                     Name = c.Name,
                     Description = c.Description,
                     BannerUrl = c.BannerUrl,
                     AvatarUrl = c.AvatarUrl,
                     CreatedAt = c.CreatedAt,
-                    Topics = topics
+                    Topics = topics,
+                    IsJoined = joinedCommunityIds.Contains(c.Id)
                 });
             }
-
-            if (!dtoList.Any())
-                return Ok(new { message = "No communities found", data = dtoList });
 
             return Ok(dtoList);
         }
@@ -323,7 +336,17 @@ public class CommunityController : ControllerBase
             return Ok(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
-    [HttpGet("getbyid")]
+
+
+
+
+
+
+
+
+
+
+    [HttpGet("getById")]
     public async Task<IActionResult> GetCommunityById(string id)
     {
         try
@@ -469,7 +492,7 @@ public class CommunityController : ControllerBase
         }
     }
 
-    [HttpDelete("group admin kick members")]
+    [HttpDelete("groupAdminKickMembers")]
     public async Task<IActionResult> KickMember([FromQuery] string adminId, [FromQuery] string userId, [FromQuery] string communityId)
     {
         if (string.IsNullOrWhiteSpace(adminId) ||
@@ -654,7 +677,7 @@ public class CommunityController : ControllerBase
 
 
 
-    [HttpGet("user communities")]
+    [HttpGet("user_communities")]
     public async Task<IActionResult> GetUserCommunities([FromQuery] string userId)
     {
         if (string.IsNullOrWhiteSpace(userId))
@@ -802,31 +825,82 @@ public class CommunityController : ControllerBase
 
 
     [HttpPatch("unban")]
-    public async Task<IActionResult> UnbanCommunity([FromQuery] string communityId)
+    public async Task<IActionResult> UnbanCommunity([FromQuery] string communityId, [FromQuery] Guid adminId)
     {
         if (string.IsNullOrWhiteSpace(communityId))
             return BadRequest(new { error = "CommunityId is required." });
 
         try
         {
-            // Check community exists
-            var community = await _client
+            // ===========================================
+            // 1. VALIDATE APP ADMIN (from User table)
+            // ===========================================
+            var userResult = await _client
+                .From<User>()
+                .Filter("id", Operator.Equals, adminId.ToString())
+                .Get();
+
+            var user = userResult.Models.FirstOrDefault();
+
+            if (user == null)
+                return BadRequest(new { error = "Admin user not found." });
+
+            if (user.role?.Trim().ToLower() != "admin")
+                return BadRequest(new { error = "Only app admins can unban communities." });
+
+            // ===========================================
+            // 2. FETCH COMMUNITY
+            // ===========================================
+            var communityResult = await _client
                 .From<Community>()
-                .Where(c => c.Id == communityId)
-                .Single();
+                .Filter("id", Operator.Equals, communityId)
+                .Get();
+
+            var community = communityResult.Models.FirstOrDefault();
 
             if (community == null)
-                return BadRequest(new { error = "Community does not exist." });
+                return BadRequest(new { error = "Community not found." });
 
-            // Update is_banned = false
+            // ===========================================
+            // 3. CHECK IF NOT BANNED
+            // ===========================================
+            if (community.IsBanned == false)
+                return BadRequest(new { error = "Community is already unbanned." });
+
+            // ===========================================
+            // 4. SET is_banned = FALSE
+            // ===========================================
             community.IsBanned = false;
 
-            await _client.From<Community>().Update(community);
+            await _client
+                .From<Community>()
+                .Filter("id", Operator.Equals, community.Id)
+                .Update(community);
+
+            // ===========================================
+            // 5. INSERT UNBAN RECORD (optional)
+            // ===========================================
+            long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            string unbanId = $"UNBAN{unix}C";  // C = Community
+
+            var unbanRecord = new Banned
+            {
+                id = unbanId,
+                community_id = communityId,
+                user_id = adminId.ToString(),
+                reason = "Unbanned by app admin",
+                created_at = DateTime.UtcNow
+            };
+
+            await _client
+                .From<Banned>()
+                .Insert(unbanRecord);
 
             return Ok(new
             {
-                message = "Community has been unbanned successfully.",
-                communityId
+                message = "Community unbanned successfully.",
+                communityId = communityId,
+                unbanId = unbanId
             });
         }
         catch (Exception ex)
@@ -834,6 +908,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
     [HttpGet("get not banned communities")]
     public async Task<IActionResult> GetUnbannedCommunities()
