@@ -1006,44 +1006,34 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // ===========================================
-            // 1. VALIDATE APP ADMIN (from User table)
-            // ===========================================
+            // 1. Validate app admin
             var userResult = await _client
                 .From<User>()
                 .Filter("id", Operator.Equals, adminId.ToString())
                 .Get();
 
             var user = userResult.Models.FirstOrDefault();
-
             if (user == null)
                 return BadRequest(new { error = "Admin user not found." });
 
             if (user.role?.Trim().ToLower() != "admin")
                 return BadRequest(new { error = "Only app admins can unban communities." });
 
-            // ===========================================
-            // 2. FETCH COMMUNITY
-            // ===========================================
+            // 2. Fetch community
             var communityResult = await _client
                 .From<Community>()
                 .Filter("id", Operator.Equals, communityId)
                 .Get();
 
             var community = communityResult.Models.FirstOrDefault();
-
             if (community == null)
                 return BadRequest(new { error = "Community not found." });
 
-            // ===========================================
-            // 3. CHECK IF NOT BANNED
-            // ===========================================
+            // 3. Check if already unbanned
             if (community.IsBanned == false)
                 return BadRequest(new { error = "Community is already unbanned." });
 
-            // ===========================================
-            // 4. SET is_banned = FALSE
-            // ===========================================
+            // 4. Update is_banned = false
             community.IsBanned = false;
 
             await _client
@@ -1051,30 +1041,16 @@ public class CommunityController : ControllerBase
                 .Filter("id", Operator.Equals, community.Id)
                 .Update(community);
 
-            // ===========================================
-            // 5. INSERT UNBAN RECORD (optional)
-            // ===========================================
-            long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            string unbanId = $"UNBAN{unix}C";  // C = Community
-
-            var unbanRecord = new Banned
-            {
-                id = unbanId,
-                community_id = communityId,
-                
-                reason = "Unbanned by app admin",
-                created_at = DateTime.UtcNow
-            };
-
+            // 5. Delete the ban record from Banned table
             await _client
                 .From<Banned>()
-                .Insert(unbanRecord);
+                .Where(b => b.community_id == communityId)
+                .Delete();
 
             return Ok(new
             {
                 message = "Community unbanned successfully.",
-                communityId = communityId,
-                unbanId = unbanId
+                communityId = communityId
             });
         }
         catch (Exception ex)
@@ -1082,6 +1058,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
     [HttpGet("getNotBannedCommunities")]
