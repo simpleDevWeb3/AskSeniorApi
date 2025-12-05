@@ -343,6 +343,53 @@ public class CommunityController : ControllerBase
         }
     }
 
+    [HttpGet("adminCommunities/{adminId}")]
+    public async Task<IActionResult> GetAdminCommunities(string adminId)
+    {
+        try
+        {
+            // 1. Get all communities moderated by the admin
+            var communityResp = await _client
+     .From<Community>()
+     .Filter("admin_Id", Supabase.Postgrest.Constants.Operator.Equals, adminId)
+     .Get();
+
+            var communities = communityResp.Models;
+
+            if (!communities.Any())
+                return Ok(new { message = "This admin does not moderate any communities.", communities = new List<object>() });
+
+            // 2. Get community IDs that the admin is in the Member table
+            var joinedRecords = await _client
+                .From<Member>()
+                .Where(m => m.user_id == adminId)
+                .Get();
+
+            var joinedCommunityIds = joinedRecords.Models
+                .Select(m => m.community_id)
+                .ToHashSet();
+
+            // 3. Build DTO list
+            var dtoList = communities.Select(c => new CommunityWithJoinStatusDto
+            {
+                Id = c.Id,
+                AdminId = (Guid)c.AdminId,
+                Name = c.Name,
+                Description = c.Description,
+                BannerUrl = c.BannerUrl,
+                AvatarUrl = c.AvatarUrl,
+                CreatedAt = c.CreatedAt,
+                IsJoined = joinedCommunityIds.Contains(c.Id) // usually true
+            }).ToList();
+
+            return Ok(dtoList);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
 
 
 
@@ -353,18 +400,21 @@ public class CommunityController : ControllerBase
 
 
     [HttpGet("getById")]
-    public async Task<IActionResult> GetCommunityById(string id)
+    public async Task<IActionResult> GetCommunityById([FromQuery] string id, [FromQuery] string userId)
     {
+        if (string.IsNullOrWhiteSpace(id))
+            return BadRequest(new { message = "CommunityId is required." });
+
         try
         {
-            // 1. Get the community by ID
+            // 1. Get the community by ID, only if it's not banned
             var communityResponse = await _client
                 .From<Community>()
-                .Where(c => c.Id == id)
+                .Where(c => c.Id == id && c.IsBanned == false)
                 .Single();
 
             if (communityResponse == null)
-                return NotFound(new { message = "Community not found." });
+                return NotFound(new { message = "Community not found or it is banned." });
 
             // 2. Get associated topic IDs
             var communityTopics = await _client
@@ -390,17 +440,30 @@ public class CommunityController : ControllerBase
                 }).ToList();
             }
 
-            // 4. Map to DTO
-            var communityDto = new CommunityDto
+            // 4. Check if the user has joined the community
+            bool isJoined = false;
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var membership = await _client
+                    .From<Member>()
+                    .Where(m => m.user_id == userId && m.community_id == id)
+                    .Get();
+
+                isJoined = membership.Models.Any();
+            }
+
+            // 5. Map to DTO
+            var communityDto = new CommunityWithJoinStatusDto
             {
                 Id = communityResponse.Id,
-                AdminId = communityResponse.AdminId,
+                AdminId = (Guid)communityResponse.AdminId,
                 Name = communityResponse.Name,
                 Description = communityResponse.Description,
                 BannerUrl = communityResponse.BannerUrl,
                 AvatarUrl = communityResponse.AvatarUrl,
                 CreatedAt = communityResponse.CreatedAt,
-                Topics = topics
+                Topics = topics,
+                IsJoined = isJoined
             };
 
             return Ok(communityDto);
@@ -410,6 +473,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { message = "Cannot connect to Supabase", error = ex.Message });
         }
     }
+
 
     [HttpPost("join")]
     public async Task<IActionResult> JoinCommunity(string userId, string communityId)
