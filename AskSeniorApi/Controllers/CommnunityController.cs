@@ -31,19 +31,27 @@ public class CommunityController : ControllerBase
             // 1. Validate Admin Exists
             var adminCheck = await _client
                 .From<User>()
-                .Select("*")
-                .Filter("id", Operator.Equals, req.AdminId.ToString())
-                .Single();
+                .Where(u => u.id == req.AdminId.ToString())
+                .Get();
 
-            if (adminCheck == null)
+            var adminUser = adminCheck.Models.FirstOrDefault();
+            if (adminUser == null)
                 return BadRequest(new { error = "AdminId does not exist in users table." });
 
+            // 1a. Check if the admin is banned
+            var bannedRecord = await _client
+            .From<Banned>()
+            .Where(b => b.user_id == req.AdminId.ToString())
+            .Get();
+
+
+            if (bannedRecord.Models.Any())
+                return BadRequest(new { error = "You are banned and cannot create communities." });
 
             // 2. Validate UNIQUE community name
             var nameCheck = await _client
                 .From<Community>()
-                .Select("id")
-                .Filter("name", Operator.Equals, req.Name.Trim())
+                .Where(c => c.Name.Trim().ToLower() == req.Name.Trim().ToLower())
                 .Get();
 
             if (nameCheck.Models.Count > 0)
@@ -53,7 +61,6 @@ public class CommunityController : ControllerBase
                     error = "A community with this name already exists. Please choose a different name."
                 });
             }
-
 
             // 3. Auto-generate Community ID using UNIX format
             long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -68,7 +75,6 @@ public class CommunityController : ControllerBase
 
             if (req.AvatarFile != null)
                 avatarUrl = await UploadFile.UploadFileAsync(req.AvatarFile, "Avatar", _client);
-
 
             // 5. Insert Community
             var newCommunity = new Community
@@ -87,7 +93,6 @@ public class CommunityController : ControllerBase
 
             if (created == null)
                 return BadRequest(new { error = "Failed to create community." });
-
 
             // 6. Insert Related Topics
             foreach (var topicId in req.TopicIds.Distinct())
@@ -124,6 +129,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 
@@ -708,7 +714,7 @@ public class CommunityController : ControllerBase
 
 
 
-    [HttpGet("user_communities")]
+    [HttpGet("userCommunities")]
     public async Task<IActionResult> GetUserCommunities([FromQuery] string userId)
     {
         if (string.IsNullOrWhiteSpace(userId))
@@ -716,44 +722,42 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // 1. Get memberships for this user
-            var memberships = await _client
+            // 1. Get all communities
+            var allCommunitiesResp = await _client.From<Community>().Get();
+            var allCommunities = allCommunitiesResp.Models;
+
+            if (!allCommunities.Any())
+                return Ok(new { message = "No communities found.", communities = new List<CommunityWithJoinStatusDto>() });
+
+            // 2. Get all community IDs that the user has joined
+            var joinedRecords = await _client
                 .From<Member>()
                 .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId)
                 .Get();
 
-            if (!memberships.Models.Any())
-                return Ok(new { message = "User has not joined any communities.", communities = new List<object>() });
+            var joinedCommunityIds = joinedRecords.Models
+                .Select(m => m.community_id)
+                .ToHashSet(); // For fast lookup
 
-            // 2. Extract community IDs
-            var communityIds = memberships.Models.Select(m => m.community_id).ToList();
-
-            // 3. Fetch communities using the IDs
-            var communityResp = await _client
-                .From<Community>()
-                .Filter("id", Supabase.Postgrest.Constants.Operator.In, communityIds)
-                .Get();
-
-            var communities = communityResp.Models;
-
-            // 4. Map to DTO/anonymous object to avoid serialization issues
-            var result = communities.Select(c => new
+            // 3. Map communities to DTO with IsJoined
+            var dtoList = allCommunities.Select(c => new CommunityWithJoinStatusDto
             {
-                id = c.Id,
-                name = c.Name,
-                description = c.Description,
-                banner_url = c.BannerUrl,
-                avatar_url = c.AvatarUrl,
-                admin_id = c.AdminId,
-                created_at = c.CreatedAt,
-                is_banned = c.IsBanned
+                Id = c.Id,
+                AdminId = (Guid)c.AdminId,
+                Name = c.Name,
+                Description = c.Description,
+                BannerUrl = c.BannerUrl,
+                AvatarUrl = c.AvatarUrl,
+                CreatedAt = c.CreatedAt,
+                Topics = new List<TopicDto>(), // Optionally fetch topics like in GetAll
+                IsJoined = joinedCommunityIds.Contains(c.Id)
             }).ToList();
 
             return Ok(new
             {
                 userId,
-                count = result.Count,
-                communities = result
+                count = dtoList.Count,
+                communities = dtoList
             });
         }
         catch (Exception ex)
@@ -761,6 +765,11 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+
+
+
+
 
     [HttpPatch("ban")]
     public async Task<IActionResult> BanCommunity([FromQuery] string communityId, [FromQuery] Guid adminId)
@@ -941,7 +950,7 @@ public class CommunityController : ControllerBase
     }
 
 
-    [HttpGet("get not banned communities")]
+    [HttpGet("getNotBannedCommunities")]
     public async Task<IActionResult> GetUnbannedCommunities()
     {
         try
