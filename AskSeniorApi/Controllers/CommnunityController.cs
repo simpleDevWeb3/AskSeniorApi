@@ -413,7 +413,9 @@ public class CommunityController : ControllerBase
 
         try
         {
+            //
             // 1. Validate user exists
+            //
             var userCheck = await _client
                 .From<User>()
                 .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, userId)
@@ -422,7 +424,27 @@ public class CommunityController : ControllerBase
             if (userCheck == null)
                 return BadRequest(new { error = "User does not exist." });
 
-            // 2. Validate community exists
+
+            //
+            // 2. Check if user is banned (from ANY community)
+            //
+            var banCheck = await _client
+                .From<Banned>()          // <-- This is your banned table
+                .Where(b => b.user_id == userId)
+                .Get();
+
+            if (banCheck.Models.Any())
+            {
+                return BadRequest(new
+                {
+                    error = "User is banned and cannot join any community."
+                });
+            }
+
+
+            //
+            // 3. Validate the community exists AND is not banned
+            //
             var communityCheck = await _client
                 .From<Community>()
                 .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, communityId)
@@ -431,7 +453,13 @@ public class CommunityController : ControllerBase
             if (communityCheck == null)
                 return BadRequest(new { error = "Community does not exist." });
 
-            // 3. Prevent duplicate membership
+            if (communityCheck.IsBanned)
+                return BadRequest(new { error = "This community is banned and cannot be joined." });
+
+
+            //
+            // 4. Prevent duplicate membership
+            //
             var existing = await _client
                 .From<Member>()
                 .Where(m => m.user_id == userId && m.community_id == communityId)
@@ -440,7 +468,10 @@ public class CommunityController : ControllerBase
             if (existing.Models.Any())
                 return BadRequest(new { error = "User already joined the community." });
 
-            // 4. Insert new record
+
+            //
+            // 5. Insert membership
+            //
             var newMember = new Member
             {
                 user_id = userId,
@@ -456,7 +487,6 @@ public class CommunityController : ControllerBase
                 message = "User successfully joined the community.",
                 userId,
                 communityId
-             
             });
         }
         catch (Exception ex)
@@ -464,6 +494,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
     [HttpDelete("leave")]
     public async Task<IActionResult> LeaveCommunity([FromQuery] string userId, [FromQuery] string communityId)
@@ -794,7 +825,7 @@ public class CommunityController : ControllerBase
             {
                 id = banId,
                 community_id = communityId,
-                user_id = adminId.ToString(),
+                
                 reason = "Banned by app admin",
                 created_at = DateTime.UtcNow
             };
@@ -887,7 +918,7 @@ public class CommunityController : ControllerBase
             {
                 id = unbanId,
                 community_id = communityId,
-                user_id = adminId.ToString(),
+                
                 reason = "Unbanned by app admin",
                 created_at = DateTime.UtcNow
             };
