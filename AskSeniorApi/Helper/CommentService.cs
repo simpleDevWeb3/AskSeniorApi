@@ -8,7 +8,7 @@ namespace AskSeniorApi.Helper;
 
 public interface ICommentService
 {
-    Task<List<CommentDto>> GetCommentsAsync(string postId, string? current_user = null);
+    Task<List<CommentDto>> GetCommentsAsync(string? postId = null, string? user_id = null, string? current_user = null);
 }
 
 public class CommentService : ICommentService
@@ -20,16 +20,28 @@ public class CommentService : ICommentService
         _supabase = supabase;
     }
 
-    public async Task<List<CommentDto>> GetCommentsAsync(string postId, 
-                                                        string? current_user = null)
+    public async Task<List<CommentDto>> GetCommentsAsync(
+       string? postId = null,
+       string? user_id = null,             
+       string? current_user = null)
     {
 
-        var comments = await _supabase
-            .From<CommentRespone>()
-            .Select("*, vote(*)")
-            .Where(c => c.PostId == postId)
-            .Order(c => c.CreatedAt, Ordering.Descending)
-            .Get();
+        var query = _supabase
+                    .From<CommentRespone>()
+                    .Select("*, vote(*)")
+                    .Order(c => c.CreatedAt, Ordering.Descending);
+
+        if (!postId.IsNullOrEmpty())
+        {
+            query = query.Where(c => c.PostId == postId);
+        }
+
+        if (!user_id.IsNullOrEmpty())
+        {
+            query = query.Where(c => c.UserId == user_id);
+        }
+
+        var comments = await query.Get();
 
         var commentDto = comments.Models
             .Select(c => new CommentDto

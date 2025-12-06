@@ -31,4 +31,6 @@ public class Vote : BaseModel
     [Reference(typeof(Post), ReferenceAttribute.JoinType.Left)]
     public Post Post { get; set; }
 
+    [Reference(typeof(CommentRespone), ReferenceAttribute.JoinType.Left)]
+    public CommentRespone Comment { get; set; }
 }

@@ -1,8 +1,10 @@
 ﻿using AskSeniorApi.DTO;
 using AskSeniorApi.Helper;
+using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Supabase;
 using static AskSeniorApi.Models.Auth;
 
@@ -20,10 +22,15 @@ public class CommentController : ControllerBase
         _commentService = commentService;
     }
 
-    [HttpGet("post/{postId}")]
-    public async Task<IActionResult> GetCommentsByPost(string postId)
+    [HttpGet("post/")]
+    public async Task<IActionResult> GetCommentsByPost(string? postId = null, string? userId = null)
     {
-        return Ok(await _commentService.GetCommentsAsync(postId));
+        postId = postId.Clean();
+        userId = userId.Clean();
+
+        var commentsDto = await _commentService.GetCommentsAsync(postId: postId, user_id: userId);
+        
+        return Ok(commentsDto);
     }
 
     [HttpPost("create")]

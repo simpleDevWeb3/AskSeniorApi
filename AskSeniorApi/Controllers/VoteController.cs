@@ -4,6 +4,7 @@ using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Supabase;
 using System.Security.Claims;
@@ -168,6 +169,52 @@ public class VoteController : ControllerBase
 
         return Ok(new { message = "Vote deleted" });
     }
+
+
+    [HttpGet("all_Vote")]
+    public async Task<IActionResult> VotedPostComment(string user_id, bool? vote_type = true)
+    {
+        var all_PC = await _supabase
+                    .From<Vote>()
+                    .Where(v => v.UserId == user_id && v.IsUpvote == vote_type)
+                    .Get();
+        if (all_PC.Models.Count <= 0) return Ok("No record");
+
+        var dtoData = all_PC.Models.Select(pc => new UserVotedDto
+        {
+            type = pc.PostId.IsNullOrEmpty() ? "Comment" : "Post",
+            //PC ID
+            post_id = pc.PostId,
+            comment_id = pc.CommentId,
+            user_id = pc.UserId,
+
+            //post
+            topic_name = pc.Post?.Topic?.name,
+            community_name = pc.Post?.Community?.Name,
+            title = pc.Post?.title,
+            text = pc.Post?.text,
+            postImage_url = pc.Post?.PostImage?
+                                .ToDictionary(img => img.image_id, img => img.image_url)
+                                ?? new Dictionary<string, string>(),
+
+            //comment
+            comment_content = pc.Comment?.Content,
+            reply_to_username = pc.Comment?.Parent?.User?.name,
+            reply_to_content = pc.Comment?.Parent?.Content,
+
+            //statistic
+            //total_upVote = pc.Post?.vote.Count() ?? pc.Comment.vote.Count(),
+            vote_created_at = pc.CreatedAt,
+            self_vote = pc.IsUpvote,
+
+        });
+
+        return Ok(dtoData);
+    }
+
+
+
+
 
 
     // Helper: Convert Vote → DTO
