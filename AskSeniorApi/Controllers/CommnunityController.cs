@@ -1085,12 +1085,13 @@ public class CommunityController : ControllerBase
         try
         {
             // 1. Query communities where is_banned = true
-            var result = await _client
-                .From<Community>()
-                .Filter("is_banned", Operator.Equals, true)   // correct filtering
-                .Get();
+            var response = await _client
+     .From<Community>()
+     .Where(c => c.IsBanned == true)
+     .Get();
 
-            var communities = result.Models;
+
+            var communities = response.Models;
 
             // 2. If no banned communities
             if (!communities.Any())
