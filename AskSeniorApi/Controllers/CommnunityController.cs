@@ -693,6 +693,7 @@ public class CommunityController : ControllerBase
 
         try
         {
+            // 1. Get memberships
             var memberResp = await _client
                 .From<Member>()
                 .Filter("community_id", Supabase.Postgrest.Constants.Operator.Equals, communityId)
@@ -701,10 +702,19 @@ public class CommunityController : ControllerBase
             var members = memberResp.Models;
 
             if (!members.Any())
-                return Ok(new { message = "No members in this community yet.", members = new List<object>() });
+            {
+                return Ok(new
+                {
+                    count = 0,
+                    message = "No members in this community yet.",
+                    members = new List<object>()
+                });
+            }
 
+            // 2. Extract user IDs
             var userIds = members.Select(m => m.user_id).ToList();
 
+            // 3. Fetch users
             var userResp = await _client
                 .From<User>()
                 .Filter("id", Supabase.Postgrest.Constants.Operator.In, userIds)
@@ -712,11 +722,11 @@ public class CommunityController : ControllerBase
 
             var users = userResp.Models;
 
+            // 4. Build DTO list
             var result = members.Select(m =>
             {
                 var user = users.FirstOrDefault(u => u.id.ToString() == m.user_id);
 
-                // map only the fields we want in DTO
                 return new
                 {
                     user_id = m.user_id,
@@ -736,13 +746,19 @@ public class CommunityController : ControllerBase
                 };
             }).ToList();
 
-            return Ok(result);
+            // 5. Return with count
+            return Ok(new
+            {
+                count = result.Count,
+                members = result
+            });
         }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
     [HttpGet("user-unjoined-communities")]
     public async Task<IActionResult> GetUserUnjoinedCommunities([FromQuery] string userId)
@@ -1061,17 +1077,50 @@ public class CommunityController : ControllerBase
 
 
 
-    [HttpGet("getNotBannedCommunities")]
-    public async Task<IActionResult> GetUnbannedCommunities()
+
+
+    [HttpGet("banned-communities")]
+    public async Task<IActionResult> GetBannedCommunities()
     {
         try
         {
+            // 1. Query communities where is_banned = true
             var result = await _client
                 .From<Community>()
-                .Filter("is_banned", Supabase.Postgrest.Constants.Operator.Equals, false)
+                .Filter("is_banned", Operator.Equals, true)   // correct filtering
                 .Get();
 
-            return Ok(result.Models);
+            var communities = result.Models;
+
+            // 2. If no banned communities
+            if (!communities.Any())
+            {
+                return Ok(new
+                {
+                    message = "No banned communities found.",
+                    count = 0,
+                    communities = new List<object>()
+                });
+            }
+
+            // 3. Format output
+            var formatted = communities.Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                description = c.Description,
+                banner_url = c.BannerUrl,
+                avatar_url = c.AvatarUrl,
+                admin_id = c.AdminId,
+                created_at = c.CreatedAt,
+                is_banned = c.IsBanned
+            }).ToList();
+
+            return Ok(new
+            {
+                count = formatted.Count,
+                communities = formatted
+            });
         }
         catch (Exception ex)
         {
@@ -1079,23 +1128,7 @@ public class CommunityController : ControllerBase
         }
     }
 
-    [HttpGet("get banned communities")]
-    public async Task<IActionResult> GetbannedCommunities()
-    {
-        try
-        {
-            var result = await _client
-                .From<Community>()
-                .Filter("is_banned", Supabase.Postgrest.Constants.Operator.Equals, true)
-                .Get();
 
-            return Ok(result.Models);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
 
 
 
