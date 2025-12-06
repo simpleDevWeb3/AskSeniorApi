@@ -171,42 +171,65 @@ public class VoteController : ControllerBase
     }
 
 
-    [HttpGet("all_Vote")]
+    [HttpGet("all_Voted")]
     public async Task<IActionResult> VotedPostComment(string user_id, bool? vote_type = true)
     {
-        var all_PC = await _supabase
-                    .From<Vote>()
-                    .Where(v => v.UserId == user_id && v.IsUpvote == vote_type)
+
+        var all_vote = await _supabase
+                    .From<VotedPostComment>()
+                    .Select("*, Comment:comment_id(*, Parent:parent_id(*, User:user_id(*))), Post:post_id(*)")
                     .Get();
-        if (all_PC.Models.Count <= 0) return Ok("No record");
 
-        var dtoData = all_PC.Models.Select(pc => new UserVotedDto
+        var all_comment = await _supabase
+                        .From<Comment>()
+                        .Get();
+
+        var all_PC = all_vote.Models
+                    .Where(v => v.UserId == user_id && v.IsUpvote == vote_type);
+
+        if (all_PC.Count() <= 0) return Ok("No record");
+
+        var dtoData = all_PC.Select(pc =>
         {
-            type = pc.PostId.IsNullOrEmpty() ? "Comment" : "Post",
-            //PC ID
-            post_id = pc.PostId,
-            comment_id = pc.CommentId,
-            user_id = pc.UserId,
+            bool isPost = pc.PostId != null;
 
-            //post
-            topic_name = pc.Post?.Topic?.name,
-            community_name = pc.Post?.Community?.Name,
-            title = pc.Post?.title,
-            text = pc.Post?.text,
-            postImage_url = pc.Post?.PostImage?
-                                .ToDictionary(img => img.image_id, img => img.image_url)
-                                ?? new Dictionary<string, string>(),
+            return new UserVotedDto
+            {
 
-            //comment
-            comment_content = pc.Comment?.Content,
-            reply_to_username = pc.Comment?.Parent?.User?.name,
-            reply_to_content = pc.Comment?.Parent?.Content,
+                type = pc.PostId.IsNullOrEmpty() ? "Comment" : "Post",
+                //PC ID
+                post_id = pc.PostId,
+                comment_id = pc.CommentId,
 
-            //statistic
-            //total_upVote = pc.Post?.vote.Count() ?? pc.Comment.vote.Count(),
-            vote_created_at = pc.CreatedAt,
-            self_vote = pc.IsUpvote,
+                //owner 
+                user_id = pc.Post?.user_id ?? pc.Comment.UserId,
+                user_name = pc.Post?.User?.name ?? pc.Comment.User.name,
+                avatar_url = pc.Post?.User?.avatar_url ?? pc.Comment.User.avatar_url,
 
+                //post
+                topic_name = pc.Post?.Topic?.name,
+                community_name = pc.Post?.Community?.Name,
+                title = pc.Post?.title,
+                text = pc.Post?.text,
+                postImage_url = pc.Post?.PostImage?
+                                    .ToDictionary(img => img.image_id, img => img.image_url)
+                                    ?? new Dictionary<string, string>(),
+
+                //comment
+                comment_content = pc.Comment?.Content,
+                reply_to_userId = pc.Comment?.Parent?.UserId,
+                reply_to_username = pc.Comment?.Parent?.User?.name,
+                reply_to_content = pc.Comment?.Parent?.Content,
+
+                //statistic
+                total_upVote = VoteHelper.GetVoteCount(all_vote.Models, isPost, pc.PostId, pc.CommentId, true),
+                total_downVote = VoteHelper.GetVoteCount(all_vote.Models, isPost, pc.PostId, pc.CommentId, true),
+                total_comment = VoteHelper.GetCommentCount(all_comment.Models, isPost, pc.PostId, pc.CommentId),
+
+                created_at = pc.Post?.created_at ?? pc.Comment.CreatedAt,
+                vote_created_at = pc.CreatedAt,
+                self_vote = pc.IsUpvote,
+            };
         });
 
         return Ok(dtoData);

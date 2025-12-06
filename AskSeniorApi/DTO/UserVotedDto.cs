@@ -10,8 +10,8 @@ public class UserVotedDto
 
     //user
     public string user_id { get; set; }
-    //public string user_name { get; set; }
-    //public string avatar_url { get; set; }
+    public string user_name { get; set; }
+    public string avatar_url { get; set; }
     
     
     //post
@@ -24,15 +24,16 @@ public class UserVotedDto
 
     //comment
     public string? comment_content { get; set; } = null;
-    //public string? reply_to_id { get; set; } = null;
+    public string? reply_to_userId { get; set; } = null;
     public string? reply_to_username { get; set; } = null;
     public string? reply_to_content { get; set; } = null;
 
 
     //statistic
-    //public int total_comment {  get; set; } = 0;
-    //public int total_upVote { get; set; } = 0;
-    //public int total_downVote { get; set; } = 0;
+    public int total_comment {  get; set; } = 0;
+    public int total_upVote { get; set; } = 0;
+    public int total_downVote { get; set; } = 0;
+    public DateTime created_at { get; set; }
     public DateTime vote_created_at { get; set; }
     public bool? self_vote { get; set; }
 }

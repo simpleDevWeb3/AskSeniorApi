@@ -29,7 +29,6 @@ public class PostController : ControllerBase
     public async Task<IActionResult> GetPost(
     string? current_user = null, 
     string? user_id = null,
-    string? user_name = null,
     string? post_title = null,
     string? post_id = null,
     string? community_id = null,
@@ -42,7 +41,6 @@ public class PostController : ControllerBase
                  .Select("*, comment(*), vote(*)");
 
             user_id = user_id.Clean();
-            user_name = user_name.Clean();
             post_id = post_id.Clean();
             post_title = post_title.Clean();
             current_user = current_user.Clean();
@@ -54,10 +52,7 @@ public class PostController : ControllerBase
                 query = query.Where(x => x.user_id == user_id);
             }
 
-            if (!string.IsNullOrEmpty(user_name))
-            {
-                query = query.Where(x => x.User.name == user_name);
-            }
+
         
             if (!string.IsNullOrEmpty(post_title))
             {

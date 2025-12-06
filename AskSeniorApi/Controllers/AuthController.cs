@@ -383,6 +383,40 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpGet("searchUser")]
+    public async Task<IActionResult> searchUser(string username)
+    {
+        username = username.Clean();
+
+        var all_user = await _supabase
+                        .From<User>()
+                        .Filter(u => u.name, Operator.ILike, $"%{username}%")
+                        .Get();
+        if (all_user.Models.Count() <= 0) return Ok("No record founded");
+
+        try
+        {
+            var dtoData = all_user.Models.Select(u => new UserDto
+            {
+                id = u.id,
+                name = u.name,
+                avatar_url = u.avatar_url,
+                banner_url = u.banner_url,
+                email = u.email,
+                bio = u.bio,
+                is_banned = u.is_banned,
+                created_at = u.created_at,
+            });
+
+            return Ok(dtoData);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
     [HttpPost("banUser")]
     public async Task<IActionResult> banUser([FromForm] BanUserDto banned)
     {
