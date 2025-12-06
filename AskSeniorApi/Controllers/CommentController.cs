@@ -22,6 +22,16 @@ public class CommentController : ControllerBase
         _commentService = commentService;
     }
 
+    [HttpGet("user/")]
+    public async Task<IActionResult> GetCommentsByUser(string? userId = null, string? postId = null)
+    {
+        userId = userId.Clean();
+        postId = postId.Clean();
+        var commentsDto = await _commentService.GetCommentsAsync(user_id: userId, postId: postId);
+        
+        return Ok(commentsDto);
+    }
+
     [HttpGet("post/")]
     public async Task<IActionResult> GetCommentsByPost(string? postId = null, string? userId = null)
     {
