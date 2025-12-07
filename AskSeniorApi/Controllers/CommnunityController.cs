@@ -1,5 +1,6 @@
 ﻿using AskSeniorApi.DTOs;
 using AskSeniorApi.Helper;
+using AskSeniorApi.Helpers;
 using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -279,6 +280,8 @@ public class CommunityController : ControllerBase
     public async Task<IActionResult> GetAllCommunities([FromQuery] string? userId)
 
     {
+        userId = userId.Clean();
+
         try
         {
             // 1. Get ALL non-banned communities
