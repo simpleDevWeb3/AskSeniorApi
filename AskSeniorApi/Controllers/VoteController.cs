@@ -223,7 +223,7 @@ public class VoteController : ControllerBase
 
                 //statistic
                 total_upVote = VoteHelper.GetVoteCount(all_vote.Models, isPost, pc.PostId, pc.CommentId, true),
-                total_downVote = VoteHelper.GetVoteCount(all_vote.Models, isPost, pc.PostId, pc.CommentId, true),
+                total_downVote = VoteHelper.GetVoteCount(all_vote.Models, isPost, pc.PostId, pc.CommentId, false),
                 total_comment = VoteHelper.GetCommentCount(all_comment.Models, isPost, pc.PostId, pc.CommentId),
 
                 created_at = pc.Post?.created_at ?? pc.Comment.CreatedAt,
