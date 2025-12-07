@@ -27,7 +27,7 @@ public class CommentController : ControllerBase
     {
         userId = userId.Clean();
         postId = postId.Clean();
-        var commentsDto = await _commentService.GetCommentsAsync(user_id: userId, postId: postId);
+        var commentsDto = await _commentService.GetCommentsAsync(current_user: userId, postId: postId);
         
         return Ok(commentsDto);
     }

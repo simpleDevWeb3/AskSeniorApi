@@ -417,6 +417,58 @@ public class AuthController : ControllerBase
     }
 
 
+
+    [HttpGet("getUserById")]
+    public async Task<IActionResult> getUserById(string user_id)
+    {
+        // 1. Validate that the input is actually a UUID
+        if (!Guid.TryParse(user_id, out var guidId))
+        {
+            return BadRequest(new { error = "Invalid User ID format." });
+        }
+
+        try
+        {
+            var result = await _supabase
+                            .From<User>()
+                            // 2. Use Equals for UUIDs, and pass the original string (or the guid)
+                            // Do NOT use wildcards (%) with IDs
+                            .Filter(u => u.id, Operator.Equals, user_id)
+                            .Get();
+
+            // 3. Check if we found anything
+            if (result.Models.Count == 0)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // 4. Map to DTO (Since we searched by ID, there should only be one)
+            var user = result.Models.First();
+
+            var dto = new UserDto
+            {
+                id = user.id,
+                name = user.name,
+                avatar_url = user.avatar_url,
+                banner_url = user.banner_url,
+                email = user.email,
+                bio = user.bio,
+                is_banned = user.is_banned,
+                created_at = user.created_at,
+            };
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+
+
+
+
     [HttpPost("banUser")]
     public async Task<IActionResult> banUser([FromForm] BanUserDto banned)
     {
