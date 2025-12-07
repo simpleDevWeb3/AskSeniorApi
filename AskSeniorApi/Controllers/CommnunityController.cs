@@ -421,6 +421,7 @@ public class CommunityController : ControllerBase
     [FromQuery] string? userId = null
 )
     {
+        userId = userId.Clean();
         if (string.IsNullOrWhiteSpace(id))
             return BadRequest(new { message = "CommunityId is required." });
 
