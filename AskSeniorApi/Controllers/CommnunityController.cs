@@ -180,10 +180,11 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // 1. Search for communities using ILIKE (case-insensitive, supports partial)
+            // 1. Search only NON-BANNED communities using ILIKE
             var communitiesResponse = await _client
                 .From<Community>()
                 .Filter("name", Supabase.Postgrest.Constants.Operator.ILike, $"%{keyword}%")
+                .Filter("is_banned", Supabase.Postgrest.Constants.Operator.Equals, "false")
                 .Get();
 
             var communities = communitiesResponse.Models;
@@ -195,14 +196,14 @@ public class CommunityController : ControllerBase
             var linksResponse = await _client.From<CommunityTopic>().Get();
             var links = linksResponse.Models;
 
-            // 3. Collect all topic IDs referenced by these communities
+            // 3. Collect topic IDs linked to these communities
             var topicIds = links
                 .Where(l => communities.Any(c => c.Id == l.CommunityId))
                 .Select(l => l.TopicId)
                 .Distinct()
                 .ToList();
 
-            // 4. Fetch topic details in one query
+            // 4. Fetch topic details
             var topicRecordsResponse = await _client
                 .From<Topic>()
                 .Filter("id", Supabase.Postgrest.Constants.Operator.In, topicIds)
@@ -210,7 +211,7 @@ public class CommunityController : ControllerBase
 
             var topicMap = topicRecordsResponse.Models.ToDictionary(t => t.id);
 
-            // 5. Build the final DTO output
+            // 5. Build DTOs
             var dtoList = communities.Select(c =>
             {
                 var relatedTopics = links
@@ -244,6 +245,7 @@ public class CommunityController : ControllerBase
             return Ok(new { error = ex.Message });
         }
     }
+
 
 
     [HttpPut("update")]
