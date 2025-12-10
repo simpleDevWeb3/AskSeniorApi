@@ -315,6 +315,7 @@ public class AuthController : ControllerBase
 
 
     [HttpPost("editAccount/{user_id}")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> EditAccount(string user_id, [FromForm] UserEditDto req)
     {
         req.name = req.name.Clean();
