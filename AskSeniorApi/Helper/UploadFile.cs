@@ -9,6 +9,11 @@ public static class UploadFile
     string bucket,
     Supabase.Client supabase)
     {
+        if (supabase == null)
+        {
+           
+            throw new ArgumentNullException(nameof(supabase), "The Supabase client is null. Check your Dependency Injection.");
+        }
         if (file == null || file.Length == 0)
             return null;
 
