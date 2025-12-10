@@ -23,7 +23,13 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
         AutoRefreshToken = true
     };
 
-    return new Supabase.Client(url, key, options);
+
+    var client = new Supabase.Client(url, key, options);
+
+   
+    client.InitializeAsync().Wait();
+
+    return client;
 });
 
 builder.Services.AddCors(options =>
