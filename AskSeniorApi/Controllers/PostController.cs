@@ -208,6 +208,14 @@ public class PostController : ControllerBase
 
             if (editedPost.new_image != null && editedPost.new_image.Count() > 0)
             {
+                //var post_image = posts.Models.Select(p => p.PostImage);
+                //var old_url = post_image.
+                var oldImageUrls = post.PostImage
+                                    .Select(img => img.image_url)
+                                    .Where(url => !string.IsNullOrEmpty(url))
+                                    .ToList();
+                await DeleteFile.DeleteFileAsync(_supabase, "PostImage", oldImageUrls);
+
                 for (int i = 0; i < editedPost.new_image.Count(); i++)
                 {
                     var original_image_id = editedPost.original_image_id[i];
@@ -246,11 +254,16 @@ public class PostController : ControllerBase
     {
         try
         {
+            var response = await _supabase.From<PostImage>().Select("image_url").Where(pi => pi.post_id == post_id).Get();
+            var old_url = response.Models.Select(pi => pi.image_url).ToList();
+
+            await DeleteFile.DeleteFileAsync(_supabase, "PostImage", old_url);
+            /*
             await _supabase
                 .From<Post>()
                 .Where(p => p.id == post_id)
                 .Delete();
-            
+            */
             return NoContent();
         }
         catch (Exception ex)

@@ -1,4 +1,6 @@
-﻿namespace AskSeniorApi.Helper;
+﻿using AskSeniorApi.Models;
+
+namespace AskSeniorApi.Helper;
 
 public static class UploadFile
 {
@@ -58,5 +60,45 @@ public static class UploadFile
             .From(bucket)
             .GetPublicUrl(imagePath);
     }
+
+}
+
+public static class DeleteFile
+{
+    public static async Task DeleteFileAsync(Supabase.Client client, string bucket, List<string> fileUrls)
+    {
+        if (fileUrls == null || fileUrls.Count == 0)
+        {
+            Console.WriteLine("fileUrls.Count == 0");
+            return;
+        }
+
+        var storage = client.Storage.From(bucket);
+
+        // Extract the file paths from URLs
+        var filePaths = fileUrls
+                        .Select(url => ExtractPathFromUrl(url))
+                        .ToList();
+
+        if (filePaths.Count == 0)
+        {
+            Console.WriteLine("filePaths.Count == 0");
+            return;
+        }
+
+        Console.WriteLine("no error");
+
+        // Remove all files at once
+        await storage.Remove(filePaths);
+
+    }
+    // Helper to extract path from full public URL
+    private static string ExtractPathFromUrl(string url)
+    {
+        // Adjust "PostImage" to match your bucket path
+        var parts = url.Split("/PostImage/");
+        return parts.Length == 2 ? parts[1] : null;
+    }
+
 
 }
