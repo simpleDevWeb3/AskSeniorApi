@@ -71,11 +71,11 @@ public static class DeleteFile
         var storage = client.Storage.From(bucket);
 
         // Extract the file paths from URLs
-        var filePaths = fileUrls
+        var filename = fileUrls
                         .Select(url => ExtractPathFromUrl(url))
                         .ToList();
 
-        if (filePaths.Count == 0)
+        if (filename.Count == 0)
         {
             Console.WriteLine("filePaths.Count == 0");
             return;
@@ -84,7 +84,7 @@ public static class DeleteFile
         Console.WriteLine("no error");
 
         // Remove all files at once
-        await storage.Remove(filePaths);
+        await storage.Remove(filename);
 
     }
     // Helper to extract path from full public URL

@@ -366,7 +366,8 @@ public class AuthController : ControllerBase
                 avatar_url = avatar_url ?? user.avatar_url,
                 banner_url = banner_url ?? user.banner_url,
                 email = user.email,
-                bio = req.bio ?? user.bio
+                bio = req.bio ?? user.bio,
+                is_banned = user.is_banned,
             };
 
             var response = await _supabase

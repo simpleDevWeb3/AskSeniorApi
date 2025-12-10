@@ -258,12 +258,12 @@ public class PostController : ControllerBase
             var old_url = response.Models.Select(pi => pi.image_url).ToList();
 
             await DeleteFile.DeleteFileAsync(_supabase, "PostImage", old_url);
-            /*
+            
             await _supabase
                 .From<Post>()
                 .Where(p => p.id == post_id)
                 .Delete();
-            */
+            
             return NoContent();
         }
         catch (Exception ex)
