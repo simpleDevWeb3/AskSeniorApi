@@ -54,7 +54,7 @@ public class CommentController : ControllerBase
         int count = allComments.Models.Count;
 
         // 2️ Generate comment ID
-        string commentId = "C" + (count + 1).ToString("D4"); // e.g., "C0001", "C0002", ...
+        string commentId = "C" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
         // 3️ Create the comment
         var newComment = new Comment

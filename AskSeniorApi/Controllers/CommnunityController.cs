@@ -136,6 +136,32 @@ public class CommunityController : ControllerBase
     }
 
 
+    [HttpGet("check-name")]
+    public async Task<IActionResult> IsCommunityNameTaken([FromQuery] string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest(new { error = "Community name is required." });
+
+        try
+        {
+            var check = await _client
+                .From<Community>()
+                .Filter("name", Operator.Equals, name.Trim())
+                .Get();
+
+            bool isTaken = check.Models.Any();
+
+            return Ok(new
+            {
+                name = name.Trim(),
+                isDuplicate = isTaken
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 
 
 
