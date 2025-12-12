@@ -388,22 +388,33 @@ public class CommunityController : ControllerBase
 
 
     [HttpGet("adminCommunities/{adminId}")]
-    public async Task<IActionResult> GetAdminCommunities(string adminId)
+    public async Task<IActionResult> GetAdminCommunities([FromRoute] string adminId)
     {
+        if (string.IsNullOrWhiteSpace(adminId))
+            return BadRequest(new { error = "adminId is required." });
+
         try
         {
-            // 1. Get all communities moderated by the admin
+            // 1. Get all communities moderated by the admin AND not banned
             var communityResp = await _client
-     .From<Community>()
-     .Filter("admin_Id", Supabase.Postgrest.Constants.Operator.Equals, adminId)
-     .Get();
+                .From<Community>()
+                .Filter("admin_Id", Supabase.Postgrest.Constants.Operator.Equals, adminId)
+                .Filter("is_banned", Supabase.Postgrest.Constants.Operator.Equals, "false")
+                .Get();
 
             var communities = communityResp.Models;
 
             if (!communities.Any())
-                return Ok(new { message = "This admin does not moderate any communities.", communities = new List<object>() });
+            {
+                return Ok(new
+                {
+                    message = "This admin does not moderate any active communities.",
+                    count = 0,
+                    communities = new List<object>()
+                });
+            }
 
-            // 2. Get community IDs that the admin is in the Member table
+            // 2. Get communities where admin is also a member
             var joinedRecords = await _client
                 .From<Member>()
                 .Where(m => m.user_id == adminId)
@@ -413,26 +424,66 @@ public class CommunityController : ControllerBase
                 .Select(m => m.community_id)
                 .ToHashSet();
 
-            // 3. Build DTO list
-            var dtoList = communities.Select(c => new CommunityWithJoinStatusDto
-            {
-                Id = c.Id,
-                AdminId = (Guid)c.AdminId,
-                Name = c.Name,
-                Description = c.Description,
-                BannerUrl = c.BannerUrl,
-                AvatarUrl = c.AvatarUrl,
-                CreatedAt = c.CreatedAt,
-                IsJoined = joinedCommunityIds.Contains(c.Id) // usually true
-            }).ToList();
+            var dtoList = new List<CommunityWithJoinStatusDto>();
 
-            return Ok(dtoList);
+            // 3. For each community load topics and build DTO
+            foreach (var c in communities)
+            {
+                // get community-topic mappings
+                var communityTopicsResp = await _client
+                    .From<CommunityTopic>()
+                    .Where(ct => ct.CommunityId == c.Id)
+                    .Get();
+
+                var topicIds = communityTopicsResp.Models
+                    .Select(ct => ct.TopicId)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .ToList();
+
+                var topics = new List<TopicDto>();
+                if (topicIds.Any())
+                {
+                    var topicRecordsResp = await _client
+                        .From<Topic>()
+                        .Filter("id", Supabase.Postgrest.Constants.Operator.In, topicIds)
+                        .Get();
+
+                    topics = topicRecordsResp.Models.Select(t => new TopicDto
+                    {
+                        Id = t.id,
+                        Name = t.name
+                    }).ToList();
+                }
+
+                dtoList.Add(new CommunityWithJoinStatusDto
+                {
+                    Id = c.Id,
+                    AdminId = c.AdminId ?? Guid.Empty, // fallback if null
+                    Name = c.Name,
+                    Description = c.Description,
+                    BannerUrl = c.BannerUrl,
+                    AvatarUrl = c.AvatarUrl,
+                    CreatedAt = c.CreatedAt,
+                    Topics = topics,
+                    IsJoined = joinedCommunityIds.Contains(c.Id)
+                });
+            }
+
+            return Ok(new
+            {
+                adminId,
+                count = dtoList.Count,
+                communities = dtoList
+            });
         }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
         }
     }
+
+
+
 
 
 
