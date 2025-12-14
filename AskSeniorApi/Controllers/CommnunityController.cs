@@ -306,20 +306,21 @@ public class CommunityController : ControllerBase
 
     [HttpGet("getAll")]
     public async Task<IActionResult> GetAllCommunities([FromQuery] string? userId)
-
     {
-        userId = userId.Clean();
+        userId = userId?.Clean();
 
         try
         {
             // 1. Get ALL non-banned communities
-            var communities = await _client
+            var communityResp = await _client
                 .From<Community>()
-                .Filter("is_banned", Operator.Equals, "false")
+                .Filter("is_banned", Operator.Equals, "false") // Supabase expects string
                 .Get();
 
-            // 2. If userId is empty → return IsJoined = false for all
-            HashSet<string> joinedCommunityIds = new HashSet<string>();
+            var communities = communityResp.Models;
+
+            // 2. Get joined communities for user (if provided)
+            HashSet<string> joinedCommunityIds = new();
 
             if (!string.IsNullOrWhiteSpace(userId))
             {
@@ -329,59 +330,77 @@ public class CommunityController : ControllerBase
                     .Get();
 
                 joinedCommunityIds = joinedRecords.Models
-                    .Select(m => m.community_id) // string
+                    .Select(m => m.community_id)
                     .ToHashSet();
             }
 
-            var dtoList = new List<CommunityWithJoinStatusDto>();
+            var dtoList = new List<CommunityWithStatsDto>();
 
-            foreach (var c in communities.Models)
+            foreach (var c in communities)
             {
-                // 3. Get topic mappings
-                var communityTopics = await _client.From<CommunityTopic>()
+                // 3. Topics
+                var communityTopics = await _client
+                    .From<CommunityTopic>()
                     .Where(ct => ct.CommunityId == c.Id)
                     .Get();
 
                 var topicIds = communityTopics.Models.Select(ct => ct.TopicId).ToList();
 
-                // 4. Load topics
                 var topics = new List<TopicDto>();
                 if (topicIds.Any())
                 {
-                    var topicRecords = await _client
+                    var topicResp = await _client
                         .From<Topic>()
                         .Filter("id", Operator.In, topicIds)
                         .Get();
 
-                    topics = topicRecords.Models.Select(t => new TopicDto
+                    topics = topicResp.Models.Select(t => new TopicDto
                     {
                         Id = t.id,
                         Name = t.name
                     }).ToList();
                 }
 
-                // 5. Construct DTO
-                dtoList.Add(new CommunityWithJoinStatusDto
+                // 4. Member count
+                var memberCount = await _client
+                    .From<Member>()
+                    .Filter("community_id", Operator.Equals, c.Id)
+                    .Count(Supabase.Postgrest.Constants.CountType.Exact);
+
+                // 5. Build DTO
+                dtoList.Add(new CommunityWithStatsDto
                 {
-                    Id = c.Id,                  // string
-                    AdminId = (Guid)c.AdminId,        // string
+                    Id = c.Id,
+                    AdminId = (Guid)c.AdminId,
                     Name = c.Name,
                     Description = c.Description,
                     BannerUrl = c.BannerUrl,
                     AvatarUrl = c.AvatarUrl,
                     CreatedAt = c.CreatedAt,
                     Topics = topics,
-                    IsJoined = joinedCommunityIds.Contains(c.Id)  // string → string
+
+                    IsJoined = joinedCommunityIds.Contains(c.Id),
+                    MemberCount = memberCount,
+                    IsBanned = c.IsBanned // always false here, but explicit
                 });
             }
 
-            return Ok(dtoList);
+            return Ok(new
+            {
+                count = dtoList.Count,
+                communities = dtoList
+            });
         }
         catch (Exception ex)
         {
-            return Ok(new { message = "Cannot connect to Supabase", error = ex.Message });
+            return Ok(new
+            {
+                message = "Cannot connect to Supabase",
+                error = ex.Message
+            });
         }
     }
+
 
 
 

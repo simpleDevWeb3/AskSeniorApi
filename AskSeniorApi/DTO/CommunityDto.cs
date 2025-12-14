@@ -3,6 +3,28 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AskSeniorApi.DTOs
 {
+    public class CommunityWithStatsDto
+    {
+        public string Id { get; set; }
+        public Guid AdminId { get; set; }
+
+        public string Name { get; set; }
+        public string Description { get; set; }
+
+        public string? BannerUrl { get; set; }
+        public string? AvatarUrl { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+
+        public List<TopicDto> Topics { get; set; } = new();
+
+        public bool IsJoined { get; set; }
+
+        // NEW
+        public int MemberCount { get; set; }
+        public bool IsBanned { get; set; }
+    }
+
     public class BanCommunityRequest
     {
         // the user (requester) performing the ban
