@@ -23,7 +23,100 @@ public class PostController : ControllerBase
         _commentService = commentService;
     }
 
+    [HttpGet("getAllPostsAdmin")]
+    public async Task<IActionResult> GetAllPostsAdmin(
+    string? current_user = null,
+    string? user_id = null,
+    string? post_title = null,
+    string? post_id = null,
+    string? community_id = null)
+    {
+        try
+        {
+            // 1. Select basic structure
+            var query = _supabase.From<Post>()
+                 .Select("*, comment(*), vote(*)");
 
+            // 2. Clean inputs (Helper function assumed from your code)
+            user_id = user_id.Clean();
+            post_id = post_id.Clean();
+            post_title = post_title.Clean();
+            current_user = current_user.Clean();
+            community_id = community_id.Clean();
+            List<CommentDto> comments = [];
+
+            // 3. Apply Filters
+            if (!string.IsNullOrEmpty(user_id))
+            {
+                query = query.Where(x => x.user_id == user_id);
+            }
+
+            if (!string.IsNullOrEmpty(post_title))
+            {
+                query = query.Filter(x => x.title, Operator.ILike, $"%{post_title}%");
+            }
+
+            if (!string.IsNullOrEmpty(post_id))
+            {
+                query = query.Where(x => x.id == post_id);
+                // Only fetch full comments if we are looking at a single specific post
+                comments = await _commentService.GetCommentsAsync(postId: post_id, current_user: current_user);
+            }
+
+            if (!string.IsNullOrEmpty(community_id))
+            {
+                query = query.Where(x => x.community_id == community_id);
+            }
+
+            // 4. Get Data 
+            // REMOVED: .Range(from, to) -> This makes it fetch all rows
+            // REMOVED: .Where(p => p.is_banned == false) -> This allows banned posts
+            var post = await query
+                 .Order("created_at", Ordering.Descending)
+                 .Get();
+
+            if (post.Models.Count <= 0) return Ok(new List<PostResponeDto>());
+
+            // 5. Map to DTO
+            var dtoData = post.Models.Select(p => new PostResponeDto
+            {
+                id = p.id,
+                is_banned = p.is_banned,
+                user_id = p.user_id,
+                user_name = p.User.name,
+                // Handle avatar if community is null
+                avatar_url = p.community_id.IsNullOrEmpty() ? p.User.avatar_url : p.Community?.AvatarUrl,
+                topic_id = p.topic_id,
+                topic_name = p.Topic.name,
+                community_id = p.community_id,
+                community_name = p.Community == null ? null : p.Community.Name,
+                created_at = p.created_at,
+                title = p.title,
+                text = p.text,
+                postImage_url = p.PostImage?
+                                 .ToDictionary(img => img.image_id, img => img.image_url)
+                                 ?? new Dictionary<string, string>(),
+
+                total_comment = p.comment?.Count ?? 0,
+                total_upVote = p.vote?.Count(v => v.IsUpvote) ?? 0,
+                total_downVote = p.vote?.Count(v => !v.IsUpvote) ?? 0,
+
+                // Logic to see if the current user voted on these posts
+                self_vote = p.vote?
+                             .Where(v => v.UserId == current_user)
+                             .Select(v => (bool?)v.IsUpvote)
+                             .FirstOrDefault(),
+
+                Comment = comments
+            });
+
+            return Ok(dtoData);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 
     [HttpGet("getPost")]
     public async Task<IActionResult> GetPost(
@@ -275,7 +368,7 @@ public class PostController : ControllerBase
 
 
     [HttpPost("banPost")]
-    public async Task<IActionResult> BanPost([FromForm] BanPostDto banned)
+    public async Task<IActionResult> BanPost([FromBody] BanPostDto banned)
     {
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
         int bannedPost = await _supabase

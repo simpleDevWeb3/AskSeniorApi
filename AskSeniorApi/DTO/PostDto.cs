@@ -29,6 +29,7 @@ public class PostResponeDto
 
     public bool? self_vote { get; set; }
 
+    public bool? is_banned { get; set; }
     public List<CommentDto> Comment { get; set; }
 }
 

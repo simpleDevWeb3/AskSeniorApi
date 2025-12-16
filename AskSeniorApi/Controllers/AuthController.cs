@@ -123,7 +123,7 @@ public class AuthController : ControllerBase
 
             var profile = profileRes;
 
-            var profileDto = new UserDto
+            var profileDto = new UserDto    
             {
                 id = profile.id,
                 name = profile.name,
@@ -132,6 +132,8 @@ public class AuthController : ControllerBase
                 bio = profile.bio,
                 email = profile.email,
                 created_at = profile.created_at,
+                role = profile.role,
+                is_banned = profile.is_banned,
               
             };
 
@@ -245,7 +247,7 @@ public class AuthController : ControllerBase
             if (profile == null)
                 return NotFound(new { message = "Profile not found" });
 
-            var profileDto = new UserDto
+            var profileDto = new UserDto    
             {
                 id = profile.id,
                 name = profile.name,
@@ -253,7 +255,9 @@ public class AuthController : ControllerBase
                 banner_url = profile.banner_url,
                 bio = profile.bio,
                 email = profile.email,
-                created_at = profile.created_at
+                created_at = profile.created_at,
+                role = profile.role,
+                is_banned =profile.is_banned,
             };
 
             return Ok(new
@@ -385,6 +389,35 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpGet("AllUser")]
+    public async Task<IActionResult> getAllUser()
+    {
+        var all_user = await _supabase.From<User>().Get();
+        if (all_user.Models.Count() <= 0) return Ok("No record founded");
+
+        try
+        {
+            var dtoData = all_user.Models.Select(u => new UserDto
+            {
+                id = u.id,
+                name = u.name,
+                avatar_url = u.avatar_url,
+                banner_url = u.banner_url,
+                email = u.email,
+                bio = u.bio,
+                role = u.role,
+                is_banned = u.is_banned,
+                created_at = u.created_at,
+            });
+
+            return Ok(dtoData);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("searchUser")]
     public async Task<IActionResult> searchUser(string username)
     {
@@ -408,6 +441,7 @@ public class AuthController : ControllerBase
                 bio = u.bio,
                 is_banned = u.is_banned,
                 created_at = u.created_at,
+                role = u.role,
             });
 
             return Ok(dtoData);
@@ -457,6 +491,7 @@ public class AuthController : ControllerBase
                 bio = user.bio,
                 is_banned = user.is_banned,
                 created_at = user.created_at,
+                role = user.role,
             };
 
             return Ok(dto);
@@ -472,7 +507,7 @@ public class AuthController : ControllerBase
 
 
     [HttpPost("banUser")]
-    public async Task<IActionResult> banUser([FromForm] BanUserDto banned)
+    public async Task<IActionResult> banUser([FromBody] BanUserDto banned)
     {
         long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();  //second since 1970
         int bannedUser = await _supabase
