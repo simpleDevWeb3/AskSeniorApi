@@ -5,6 +5,7 @@ using AskSeniorApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
 using Supabase;
+using Supabase.Postgrest;
 using System.Linq;
 using static Supabase.Postgrest.Constants;
 
@@ -410,7 +411,7 @@ public class CommunityController : ControllerBase
 
         try
         {
-            // 1. Get ALL communities moderated by admin (banned + unbanned)
+            // 1. Get ALL communities moderated by admin
             var communityResp = await _client
                 .From<Community>()
                 .Get();
@@ -427,7 +428,7 @@ public class CommunityController : ControllerBase
                 });
             }
 
-            // 2. Get joined communities (admin auto-joined OR legacy mismatch)
+            // 2. Communities admin has joined
             var joinedRecords = await _client
                 .From<Member>()
                 .Where(m => m.user_id == adminId)
@@ -439,10 +440,10 @@ public class CommunityController : ControllerBase
 
             var dtoList = new List<CommunityWithJoinAndBanStatusDto>();
 
-            // 3. Build DTO with topics
+            // 3. Build DTOs
             foreach (var c in communities)
             {
-                // Load topics
+                // ---------- TOPICS ----------
                 var communityTopicsResp = await _client
                     .From<CommunityTopic>()
                     .Where(ct => ct.CommunityId == c.Id)
@@ -468,6 +469,19 @@ public class CommunityController : ControllerBase
                     }).ToList();
                 }
 
+                // ---------- MEMBER COUNT ----------
+                var memberCountResp = await _client
+    .From<Member>()
+    .Filter("community_id", Operator.Equals, c.Id)
+    .Select("user_id") // required, but content doesn't matter
+    .Get();
+
+                int memberCount = memberCountResp.Count;
+
+
+
+
+
                 dtoList.Add(new CommunityWithJoinAndBanStatusDto
                 {
                     Id = c.Id,
@@ -479,8 +493,11 @@ public class CommunityController : ControllerBase
                     CreatedAt = c.CreatedAt,
                     Topics = topics,
                     IsJoined = joinedCommunityIds.Contains(c.Id),
-                    IsBanned = c.IsBanned
+                    IsBanned = c.IsBanned,
+                    MemberCount = memberCount
                 });
+
+
             }
 
             return Ok(new
@@ -495,6 +512,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 
@@ -1115,12 +1133,18 @@ public class CommunityController : ControllerBase
 
 
 
-
     [HttpPatch("ban")]
-    public async Task<IActionResult> BanCommunity([FromQuery] string communityId, [FromQuery] Guid adminId)
+    public async Task<IActionResult> BanCommunity(
+        [FromQuery] string communityId,
+        [FromQuery] Guid adminId,
+        [FromQuery] string reason
+    )
     {
         if (string.IsNullOrWhiteSpace(communityId))
             return BadRequest(new { error = "CommunityId is required." });
+
+        if (string.IsNullOrWhiteSpace(reason))
+            return BadRequest(new { error = "Ban reason is required." });
 
         try
         {
@@ -1156,7 +1180,7 @@ public class CommunityController : ControllerBase
             // ===========================================
             // 3. CHECK ALREADY BANNED
             // ===========================================
-            if (community.IsBanned == true)
+            if (community.IsBanned)
                 return BadRequest(new { error = "Community is already banned." });
 
             // ===========================================
@@ -1170,17 +1194,16 @@ public class CommunityController : ControllerBase
                 .Update(community);
 
             // ===========================================
-            // 5. INSERT BAN RECORD
+            // 5. INSERT BAN RECORD (USER INPUTTED REASON)
             // ===========================================
-
             long unix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            string banId = $"BAN{unix}C";  // C = Community
+            string banId = $"BAN{unix}C";
+
             var banRecord = new Banned
             {
                 id = banId,
                 community_id = communityId,
-                
-                reason = "Banned by app admin",
+                reason = reason.Trim(),
                 created_at = DateTime.UtcNow
             };
 
@@ -1191,7 +1214,8 @@ public class CommunityController : ControllerBase
             return Ok(new
             {
                 message = "Community banned successfully.",
-                communityId = communityId
+                communityId,
+                reason
             });
         }
         catch (Exception ex)
@@ -1199,6 +1223,7 @@ public class CommunityController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
 
 
 

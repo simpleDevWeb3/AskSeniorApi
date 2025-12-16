@@ -17,7 +17,10 @@ namespace AskSeniorApi.DTOs
 
         public bool IsJoined { get; set; }
         public bool IsBanned { get; set; }
+
+        public int MemberCount { get; set; }   // ✅ NEW
     }
+
 
     public class CommunityWithStatsDto
     {
