@@ -413,7 +413,6 @@ public class CommunityController : ControllerBase
             // 1. Get ALL communities moderated by admin (banned + unbanned)
             var communityResp = await _client
                 .From<Community>()
-                .Filter("admin_Id", Supabase.Postgrest.Constants.Operator.Equals, adminId)
                 .Get();
 
             var communities = communityResp.Models;
