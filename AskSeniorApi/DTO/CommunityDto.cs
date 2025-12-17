@@ -3,6 +3,16 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AskSeniorApi.DTOs
 {
+    public class BannedDto
+    {
+        public string Id { get; set; }
+        public string? PostId { get; set; }
+        public Guid? UserId { get; set; }
+        public string? CommunityId { get; set; }
+        public string? Reason { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
     public class CommunityWithJoinAndBanStatusDto
     {
         public string Id { get; set; }

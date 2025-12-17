@@ -1297,6 +1297,55 @@ public class CommunityController : ControllerBase
     }
 
 
+    [HttpGet("banned")]
+    public async Task<IActionResult> GetAllBanned([FromQuery] Guid adminId)
+    {
+        try
+        {
+            // 1. Validate app admin
+            var userResult = await _client
+                .From<User>()
+                .Filter("id", Operator.Equals, adminId.ToString())
+                .Get();
+
+            var admin = userResult.Models.FirstOrDefault();
+            if (admin == null)
+                return BadRequest(new { error = "Admin user not found." });
+
+            if (admin.role?.Trim().ToLower() != "admin")
+                return BadRequest(new { error = "Only app admins can view banned records." });
+
+            // 2. Fetch all banned rows
+            var bannedResult = await _client
+                .From<Banned>()
+                .Get();
+
+            // 3. Map to DTO (Scalar-safe)
+            var dto = bannedResult.Models.Select(b => new BannedDto
+            {
+                Id = b.id,
+                PostId = b.post_id,
+                UserId = string.IsNullOrWhiteSpace(b.user_id)
+        ? null
+        : Guid.Parse(b.user_id),
+                CommunityId = b.community_id,
+                Reason = b.reason,
+                CreatedAt = b.created_at
+            }).ToList();
+
+
+            return Ok(new
+            {
+                total = dto.Count,
+                data = dto
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
 
 
 
