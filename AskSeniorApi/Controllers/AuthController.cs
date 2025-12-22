@@ -373,6 +373,7 @@ public class AuthController : ControllerBase
                 email = user.email,
                 bio = req.bio ?? user.bio,
                 is_banned = user.is_banned,
+                role = user?.role
             };
 
             var response = await _supabase
